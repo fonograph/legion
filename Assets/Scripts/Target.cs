@@ -2,11 +2,11 @@
 using System.Collections;
 using System;
 
-public class Attacker : MonoBehaviour {
+public class Target : MonoBehaviour {
 
-	public event Action<Attacker> HitEvent;
+	public event Action<Target> HitEvent;
 
-	private Node node;
+	public Node node;
 
 	private bool alive;
 
@@ -21,22 +21,12 @@ public class Attacker : MonoBehaviour {
 		}
 	}
 
-	public void Activate() {
-		alive = true;
-
-		node.SetRumble(1f);
-		node.SetRumble(0, 1f);
-	}
-
 	public void Reset() {
-		alive = false;
+		alive = true;
 	}
 
 	public void Kill() {
-		alive = false;
-
 		node.SetRumble(1f);
-		node.SetRumble(0, 1.5f);
+		node.SetRumble(0, 1f);
 	}
-
 }

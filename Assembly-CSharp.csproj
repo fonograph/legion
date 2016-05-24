@@ -53,6 +53,7 @@
      <Compile Include="Assets\Scripts\Game.cs" />
      <Compile Include="Assets\Scripts\Node.cs" />
      <Compile Include="Assets\Scripts\Sounds.cs" />
+     <Compile Include="Assets\Scripts\Target.cs" />
      <Compile Include="Assets\UniMove\Code\MoveController.cs" />
      <Compile Include="Assets\UniMove\Code\UniMoveController.cs" />
      <Compile Include="Assets\UniMove\Code\UniMoveTest.cs" />

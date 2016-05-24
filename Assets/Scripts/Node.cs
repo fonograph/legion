@@ -8,16 +8,11 @@ public class Node : MonoBehaviour {
 	public static Color DEADCOLOR = Color.red;
 
 	public UniMoveController controller;
-	private Vector3 lastAccel = Vector3.zero;
+//	private Vector3 lastAccel = Vector3.zero;
+
+	public int type;
 
 	public bool inGame;
-
-	public bool alive;
-
-	public bool active;
-	public DateTime activeAt;
-
-	public bool core;
 
 	private bool calibrated = false;
 	private float mxMin;
@@ -41,7 +36,6 @@ public class Node : MonoBehaviour {
 	private IEnumerator setRumbleRoutine;
 
 	public event Action<Node> HitEvent;
-	public event Action<Node> AttackEvent;
 
 	void Awake() {
 	}
@@ -58,6 +52,10 @@ public class Node : MonoBehaviour {
 
 	// Update is called once per frame
 	void Update () {
+
+		if ( controller == null ) {
+			return;
+		}
 
 		if ( calibrationAllowed ) {
 			// Button presses
@@ -85,22 +83,22 @@ public class Node : MonoBehaviour {
 				}
 			}
 			if ( controller.GetButtonDown(PSMoveButton.Square) ) {
-				if ( !core ) {
-					core = true;
-					PlayerPrefs.SetInt(controller.Serial + "Core", 1);
+				if ( type == 1 ) {
+					type = 2;
+					PlayerPrefs.SetInt(controller.Serial + "Type", 2);
 				}
 				else {
-					core = false;
-					PlayerPrefs.SetInt(controller.Serial + "Core", 0);
+					type = 1;
+					PlayerPrefs.SetInt(controller.Serial + "Type", 1);
 				}
 				ResetLEDAndRumble();
 			}
 
 			// accelerometer test
-			if ( !calibrating && (controller.Acceleration-lastAccel).magnitude > Game.Instance.attackAccelThreshold )  {
-				SetLED(Color.cyan);
-				SetLED(Color.black, 1f);
-			}
+//			if ( !calibrating && (controller.Acceleration-lastAccel).magnitude > Game.Instance.attackAccelThreshold )  {
+//				SetLED(Color.cyan);
+//				SetLED(Color.black, 1f);
+//			}
 
 		}
 
@@ -110,27 +108,12 @@ public class Node : MonoBehaviour {
 //		Debug.Log (mx.ToString() + " " + my.ToString() + " " + mz.ToString());
 
 		if ( inGame ) {
-			if ( alive ) {
-				float d = Game.Instance.magnetThreshold;
-				if ( (mx!=0 || my!=0 || mz!=0 ) && ( mx < mxMin-d || mx > mxMax+d || my < myMin-d || my > myMax+d || mz < mzMin-d || mz > mzMax+d ) ) {
-					alive = false;
-					SetLED(DEADCOLOR);
-					SetRumble(0);
-					HitEvent(this);
-				}
-
-				if ( active ) {
-					float time = (float)DateTime.Now.Subtract(activeAt).TotalSeconds;
-					float progress = time / Game.Instance.CurrentCycleLength();
-					if ( Game.Instance.CurrentCycleLength() - time <= Game.Instance.attackLength ) {
-						// attack ready!
-						SetRumble(1f);
-						if ( (controller.Acceleration-lastAccel).magnitude > Game.Instance.attackAccelThreshold ) {
-							SetActive(false);
-							AttackEvent(this);
-						}
-					}
-				}
+			float d = Game.Instance.magnetThreshold;
+			if ( (mx!=0 || my!=0 || mz!=0 ) && ( mx < mxMin-d || mx > mxMax+d || my < myMin-d || my > myMax+d || mz < mzMin-d || mz > mzMax+d ) ) {
+//					alive = false;
+//					SetLED(DEADCOLOR);
+//					SetRumble(0);
+				HitEvent(this);
 			}
 		}
 
@@ -151,7 +134,7 @@ public class Node : MonoBehaviour {
 		}
 
 
-		lastAccel = controller.Acceleration;
+//		lastAccel = controller.Acceleration;
 
 		// DEBUG
 		//		if ( hasBall ) {
@@ -166,25 +149,6 @@ public class Node : MonoBehaviour {
 	}
 
 	public void Reset() {
-		alive = true;
-		active = false;
-		SetLED(LIVECOLOR);
-	}
-
-	public void SetActive(bool value) {
-		active = value;
-		if ( active ) {
-			activeAt = DateTime.Now;
-			if ( alive ) {
-				Flash(LIVECOLOR, Color.white);
-			}
-		}
-		else {
-			if ( alive ) {
-				SetLED(LIVECOLOR);
-			}
-			SetRumble(0);
-		}
 	}
 
 	public void SetCalibrationAllowed(bool value) {
@@ -196,8 +160,6 @@ public class Node : MonoBehaviour {
 			ResetLEDAndRumble();
 		}
 	}
-
-
 
 	public float GetOrientationDifference(Node node) {
 		Vector3 diff = normalizedOrientationDifference(normalizedOrientation(controller.Orientation.eulerAngles), normalizedOrientation(node.controller.Orientation.eulerAngles));
@@ -211,16 +173,16 @@ public class Node : MonoBehaviour {
 			SetLED(Color.red);
 		}
 		else {
-			SetLED(core ? Color.yellow : Color.green);
+			SetLED(type==1 ? Color.yellow : Color.green);
 		}
 		SetRumble(0);
 	}
 
-	private void SetLED(Color color) {
+	public void SetLED(Color color) {
 		SetLED(color, null);
 	}
 
-	private void SetLED(Color color, float? delay) {
+	public void SetLED(Color color, float? delay) {
 		if ( setLEDRoutine != null) 
 			StopCoroutine(setLEDRoutine);
 
@@ -239,11 +201,11 @@ public class Node : MonoBehaviour {
 	}
 
 	
-	private void SetRumble(float rumble) {
+	public void SetRumble(float rumble) {
 		SetRumble(rumble, null);
 	}
 	
-	private void SetRumble(float rumble, float? delay) {
+	public void SetRumble(float rumble, float? delay) {
 		if ( setRumbleRoutine != null) 
 			StopCoroutine(setRumbleRoutine);
 		
@@ -261,7 +223,7 @@ public class Node : MonoBehaviour {
 		SetRumble(rumble); 
 	}
 
-	private void Flash(Color color1, Color color2) {
+	public void Flash(Color color1, Color color2) {
 		if ( setLEDRoutine != null) 
 			StopCoroutine(setLEDRoutine);
 
@@ -283,7 +245,7 @@ public class Node : MonoBehaviour {
 		myMin = PlayerPrefs.GetFloat(controller.Serial + "YMin");
 		mzMax = PlayerPrefs.GetFloat(controller.Serial + "ZMax");
 		mzMin = PlayerPrefs.GetFloat(controller.Serial + "ZMin");
-		core = PlayerPrefs.GetInt(controller.Serial + "Core", 0) == 1;
+		type = PlayerPrefs.GetInt(controller.Serial + "Type", 1);
 
 		if ( !calibrated ) {
 			Debug.LogWarning("Magnet not calibrated!");

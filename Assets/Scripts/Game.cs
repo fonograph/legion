@@ -11,35 +11,35 @@ public class Game : MonoBehaviour {
 
 	public Node nodePrefab;
 
+	[Range(1, 2)]
+	public int gameMode;
+
 	[Range(0, 300)]
 	public float magnetThreshold;
 
-	[Range(0, 10)]
-	public float cycleLength;
+	[Range(0, 3)]
+	public float invincibleLengthOnKill;
 
 	[Range(0, 5)]
-	public float coreDamagePenalty;
+	public float invincibleLengthOnDamage;
 
-	[Range(0, 5)]
-	public float attackLength;
-
-	public float attackAccelThreshold;
-
-	[Range(1, 6)]
-	public int gameOverHits;
+	[Range(1, 5)]
+	public int hpCount;
 
 	public static Game Instance;
 
 	private AudioSource audioSource;
 
 	private List<Node> nodes;
-	private int activeNodeIdx;
 
-	public List<Attacker> attackers;
-	private int activeAttackerIdx;
+	private List<Attacker> attackers;
+	private List<Target> targets;
 
 	private Phase phase;
-	private bool isPractice;
+//	private bool isPractice;
+
+	private bool invincible;
+	private int hp;
 
 	public AudioClip nodeHitSound;
 	public AudioClip attackerKilledSound;
@@ -54,6 +54,8 @@ public class Game : MonoBehaviour {
 
 	void Start() {
 		nodes = new List<Node>();
+		attackers = new List<Attacker>();
+		targets = new List<Target>();
 
 		int count = UniMoveController.GetNumConnected();
 		Debug.Log("Controllers connected: " + count);
@@ -61,8 +63,6 @@ public class Game : MonoBehaviour {
 		for (int i = 0; i < count; i++)
 		{
 			Node node = Instantiate(nodePrefab);
-			node.HitEvent += OnNodeHit;
-			node.AttackEvent += OnNodeAttack;
 			nodes.Add(node);
 		}
 
@@ -81,6 +81,23 @@ public class Game : MonoBehaviour {
 						controller.InitOrientation();
 						controller.ResetOrientation();
 						nodes[i].Init(controller);
+						if ( gameMode == 1 ) {
+							if ( nodes[i].type == 1 ) {
+								Target target = nodes[i].gameObject.AddComponent<Target>();
+								target.HitEvent += OnTargetHit;
+								targets.Add(target);
+							}
+							else {
+								Attacker attacker = nodes[i].gameObject.AddComponent<Attacker>();
+								attacker.HitEvent += OnAttackerHit;
+								attackers.Add(attacker);
+							}
+						}
+						else {
+							Target target = nodes[i].gameObject.AddComponent<Target>();
+							target.HitEvent += OnTargetHit;
+							targets.Add(target);
+						}
 					} else {
 						Destroy(controller);
 						allConnected = false;
@@ -107,17 +124,22 @@ public class Game : MonoBehaviour {
 		}
 
 		else if ( phase == Phase.Playing ) {
-			// stop game
-			if ( Input.GetKeyDown(KeyCode.Space) ) {
-				StopGame();
+			if ( Input.GetKeyDown(KeyCode.Alpha1) ) {
+				attackers[0].Activate();
+			}
+			else if ( Input.GetKeyDown(KeyCode.Alpha2) ) {
+				attackers[1].Activate();
+			}
+			else if ( Input.GetKeyDown(KeyCode.Alpha3) ) {
+				attackers[2].Activate();
+			}
+			else if ( Input.GetKeyDown(KeyCode.Alpha4) ) {
+				attackers[3].Activate();
 			}
 
-			double activeTime = DateTime.Now.Subtract(nodes[activeNodeIdx].activeAt).TotalSeconds;
-			if ( activeTime > CurrentCycleLength() ) {
-				// next
-				nodes[activeNodeIdx].SetActive(false);
-				SelectNextNode();
-				nodes[activeNodeIdx].SetActive(true);
+			// stop game
+			else if ( Input.GetKeyDown(KeyCode.Space) ) {
+				StopGame();
 			}
 		}
 
@@ -144,20 +166,21 @@ public class Game : MonoBehaviour {
 
 	void StartGame(bool practice) {
 		phase = Phase.Playing;
-		isPractice = practice;
+//		isPractice = practice;
+
+		invincible = false;
+		hp = hpCount;
 
 		foreach ( Node node in nodes ) {
 			node.Reset();
 			node.inGame = true;
 		}
-
-		activeNodeIdx = -1;
-		SelectNextNode();
-		nodes[activeNodeIdx].SetActive(true);
-		
-		activeAttackerIdx = -1;
-		SelectNextAttacker();
-		Invoke("AnnounceAttacker", 1f);
+		foreach ( Target target in targets ) {
+			target.Reset();
+		}
+		foreach ( Attacker attacker in attackers ) {
+			attacker.Reset();
+		}
 
 //		passTimeoutRoutine = null;
 	}
@@ -165,8 +188,6 @@ public class Game : MonoBehaviour {
 
 	void StopGame() {
 		phase = Phase.Waiting;
-
-//		if ( scoreRoutine != null ) StopCoroutine(scoreRoutine);
 
 		foreach ( Node node in nodes ) {
 			node.inGame = false;
@@ -177,73 +198,49 @@ public class Game : MonoBehaviour {
 	void EndGame() {
 		phase = Phase.Waiting;
 
-//		if ( scoreRoutine != null ) StopCoroutine(scoreRoutine);
-
 		foreach ( Node node in nodes ) {
 			node.inGame = false;
 			node.ResetLEDAndRumble();
 		}
-
-		audioSource.PlayOneShot(gameOverSound);
-
-//		StartCoroutine(WaitAndPlayAnnouncerEnding(3));
-//		StartCoroutine(crowd.WaitAndDeactivate(8));
 	}
 
-	void OnNodeHit(Node node) {
-		audioSource.PlayOneShot(nodeHitSound);
+	void OnTargetHit(Target target) {
+		if ( gameMode == 1 ) {
+			if ( !invincible ) {
+				audioSource.PlayOneShot(nodeHitSound);
+				target.Kill();
 
-		// Game Over?
-		int hitCount = 0;
-		foreach ( Node n in nodes ) {
-			if ( !n.alive ) {
-				hitCount++;
+				hp--;
+				if ( hp == 0 ) {
+					audioSource.PlayOneShot(gameOverSound);
+					EndGame();
+				}
+
+				StartInvincible();
+				Invoke("StopInvincible", invincibleLengthOnDamage);
 			}
 		}
-		if ( hitCount >= gameOverHits ) {
-			EndGame();
+		else {
+			audioSource.PlayOneShot(target.node.type == 1 ? nodeHitSound : attackerKilledSound);
+			target.Kill();
 		}
 	}
 
-	void OnNodeAttack(Node node) {
-		// kill current attacker
+	void OnAttackerHit(Attacker attacker) {
 		audioSource.PlayOneShot(attackerKilledSound);
+		attacker.Kill();
 
-		SelectNextAttacker();
-
-		Invoke("AnnounceAttacker", 1f);
+		StartInvincible();
+		Invoke("StopInvincible", invincibleLengthOnKill);
 	}
 
-	void AnnounceAttacker() {
-		attackers[activeAttackerIdx].Announce();
+	void StartInvincible() {
+		CancelInvoke("StopInvincible");
+		invincible = true;
 	}
 
-	void SelectNextNode() {
-		do {
-			activeNodeIdx++;
-			if ( activeNodeIdx == nodes.Count ) {
-				activeNodeIdx = 0;
-			}
-		} while ( nodes[activeNodeIdx].core );
-	}
-
-	void SelectNextAttacker() {
-		do {
-			activeAttackerIdx++;
-			if ( activeAttackerIdx == attackers.Count ) {
-				activeAttackerIdx = 0;
-			}
-		} while ( !attackers[activeAttackerIdx].gameObject.activeSelf );
-	}
-
-	public float CurrentCycleLength() {
-		float length = cycleLength;
-		foreach ( Node node in nodes ) {
-			if ( node.core && !node.alive ) {
-				length += coreDamagePenalty;
-			}
-		}
-		return length;
+	void StopInvincible() {
+		invincible = false;
 	}
 
 
