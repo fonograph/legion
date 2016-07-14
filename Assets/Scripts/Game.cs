@@ -11,9 +11,6 @@ public class Game : MonoBehaviour {
 
 	public Node nodePrefab;
 
-	[Range(1, 2)]
-	public int gameMode;
-
 	[Range(0, 300)]
 	public float magnetThreshold;
 
@@ -25,6 +22,18 @@ public class Game : MonoBehaviour {
 
 	[Range(1, 5)]
 	public int hpCount;
+
+	[Range(1,10)]
+	public int timeBetweenAttacks;
+
+	[Range(1,10)]
+	public int level1Attacks;
+
+	[Range(1,10)]
+	public int level2Attacks;
+
+	[Range(1,100)]
+	public int level3Attacks;
 
 	public static Game Instance;
 
@@ -40,9 +49,11 @@ public class Game : MonoBehaviour {
 
 	private bool invincible;
 	private int hp;
+	private int level;
+	private int attacks;
 
 	public AudioClip nodeHitSound;
-	public AudioClip attackerKilledSound;
+	public List<AudioClip> attackerKilledSounds;
 	public AudioClip gameOverSound;
 
 //	private IEnumerator ballCycleRoutine;
@@ -81,23 +92,18 @@ public class Game : MonoBehaviour {
 						controller.InitOrientation();
 						controller.ResetOrientation();
 						nodes[i].Init(controller);
-						if ( gameMode == 1 ) {
-							if ( nodes[i].type == 1 ) {
-								Target target = nodes[i].gameObject.AddComponent<Target>();
-								target.HitEvent += OnTargetHit;
-								targets.Add(target);
-							}
-							else {
-								Attacker attacker = nodes[i].gameObject.AddComponent<Attacker>();
-								attacker.HitEvent += OnAttackerHit;
-								attackers.Add(attacker);
-							}
-						}
-						else {
+
+						if ( nodes[i].type == 1 ) {
 							Target target = nodes[i].gameObject.AddComponent<Target>();
 							target.HitEvent += OnTargetHit;
 							targets.Add(target);
 						}
+						else {
+							Attacker attacker = nodes[i].gameObject.AddComponent<Attacker>();
+							attacker.HitEvent += OnAttackerHit;
+							attackers.Add(attacker);
+						}
+
 					} else {
 						Destroy(controller);
 						allConnected = false;
@@ -170,6 +176,8 @@ public class Game : MonoBehaviour {
 
 		invincible = false;
 		hp = hpCount;
+		level = 1;
+		attacks = 0;
 
 		foreach ( Node node in nodes ) {
 			node.Reset();
@@ -182,7 +190,7 @@ public class Game : MonoBehaviour {
 			attacker.Reset();
 		}
 
-//		passTimeoutRoutine = null;
+		Invoke("SendAttackers", timeBetweenAttacks);
 	}
 
 
@@ -193,45 +201,76 @@ public class Game : MonoBehaviour {
 			node.inGame = false;
 			node.ResetLEDAndRumble();
 		}
+
+		CancelInvoke("SendAttackers");
+		CancelInvoke("StopInvincible");
 	}
 
-	void EndGame() {
-		phase = Phase.Waiting;
+//	void EndGame() {
+//		phase = Phase.Waiting;
+//
+//		foreach ( Node node in nodes ) {
+//			node.inGame = false;
+//			node.ResetLEDAndRumble();
+//		}
+//	}
 
-		foreach ( Node node in nodes ) {
-			node.inGame = false;
-			node.ResetLEDAndRumble();
+	void SendAttackers() {
+		int count = level;
+
+		attackers.Shuffle();
+		for ( int i=0; i<count; i++ ) {
+			attackers[i].Activate();
 		}
-	}
+
+		attacks++;
+	} 
 
 	void OnTargetHit(Target target) {
-		if ( gameMode == 1 ) {
-			if ( !invincible ) {
-				audioSource.PlayOneShot(nodeHitSound);
-				target.Kill();
+		if ( !invincible ) {
+			audioSource.PlayOneShot(nodeHitSound);
 
-				hp--;
-				if ( hp == 0 ) {
-					audioSource.PlayOneShot(gameOverSound);
-					EndGame();
-				}
-
-				StartInvincible();
-				Invoke("StopInvincible", invincibleLengthOnDamage);
+			hp--;
+			if ( hp == 0 ) {
+				audioSource.PlayOneShot(gameOverSound);
+				StopGame();
+				return;
 			}
-		}
-		else {
-			audioSource.PlayOneShot(target.node.type == 1 ? nodeHitSound : attackerKilledSound);
-			target.Kill();
+
+			foreach ( Target t in targets ) {
+				t.SignalTookDamage();
+			}
+			StartInvincible();
+			Invoke("StopInvincible", invincibleLengthOnDamage);
 		}
 	}
 
 	void OnAttackerHit(Attacker attacker) {
-		audioSource.PlayOneShot(attackerKilledSound);
+		audioSource.PlayOneShot(attackerKilledSounds[UnityEngine.Random.Range(0, attackerKilledSounds.Count-1)]);
 		attacker.Kill();
 
+		foreach ( Target t in targets ) {
+			t.SignalDidDamage();
+		}
 		StartInvincible();
 		Invoke("StopInvincible", invincibleLengthOnKill);
+
+		bool allDead = true;
+		foreach ( Attacker a in attackers ) {
+			if ( a.IsAlive() ) {
+				allDead = false;
+			}
+		}
+
+		if ( allDead ) {
+			int levelTarget = level == 1 ? level1Attacks : level == 2 ? level2Attacks : level == 3 ? level3Attacks : 99999;
+			if ( attacks >= levelTarget ) {
+				level++;
+				attacks = 0;
+			}
+
+			Invoke("SendAttackers", timeBetweenAttacks);
+		}
 	}
 
 	void StartInvincible() {
@@ -241,6 +280,9 @@ public class Game : MonoBehaviour {
 
 	void StopInvincible() {
 		invincible = false;
+		foreach ( Target t in targets ) {
+			t.StopSignal();
+		}
 	}
 
 
@@ -268,4 +310,21 @@ public class Game : MonoBehaviour {
 
 
 
+}
+
+static class MyExtensions
+{
+	private static System.Random rng = new System.Random();  
+
+	public static void Shuffle<T>(this IList<T> list)  
+	{  
+		int n = list.Count;  
+		while (n > 1) {  
+			n--;  
+			int k = rng.Next(n + 1);  
+			T value = list[k];  
+			list[k] = list[n];  
+			list[n] = value;  
+		}  
+	}
 }

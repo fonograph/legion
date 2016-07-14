@@ -31,6 +31,7 @@ public class Node : MonoBehaviour {
 	private float calibratingZMin;
 	private float calibratingZMax;
 
+	private bool lostConnection = false;
 
 	private IEnumerator setLEDRoutine;
 	private IEnumerator setRumbleRoutine;
@@ -79,7 +80,7 @@ public class Node : MonoBehaviour {
 					PlayerPrefs.SetFloat(controller.Serial + "ZMax", calibratingZMax);
 					PlayerPrefs.SetFloat(controller.Serial + "ZMin", calibratingZMin);
 					LoadCalibration();
-					SetLED(Color.blue);
+					ResetLEDAndRumble();
 				}
 			}
 			if ( controller.GetButtonDown(PSMoveButton.Square) ) {
@@ -130,9 +131,18 @@ public class Node : MonoBehaviour {
 			float pz = Math.Min(1, ( calibratingZMax - calibratingZMin ) / target);
 			Debug.Log(px.ToString() + " " + py.ToString() + " " + pz.ToString());
 			float p = Mathf.Min(px, Mathf.Min(py, pz));
+			p = Mathf.Pow(p, 4f); // skew color curve
 			SetLED(new Color(1-p, p, 0));
 		}
 
+		if ( mx==0 && my==0 && mz==0 ) {
+			ResetLEDAndRumble();
+			SetLED(Color.red);
+			lostConnection = true;
+		} else if (lostConnection) {
+			lostConnection = false;
+			ResetLEDAndRumble();
+		}
 
 //		lastAccel = controller.Acceleration;
 
@@ -146,6 +156,13 @@ public class Node : MonoBehaviour {
 		//			Debug.Log (Game.Instance.HoldingPlayer.GetOrientationDifference(this));
 		//		}
 
+//		float D = Game.Instance.magnetThreshold;
+//		Debug.Log(mx.ToString() + " " + my.ToString() + " " + mz.ToString());
+//		if ( (mx!=0 || my!=0 || mz!=0 ) && ( mx < mxMin-D || mx > mxMax+D || my < myMin-D || my > myMax+D || mz < mzMin-D || mz > mzMax+D ) ) {
+//			SetLED(Color.red);
+//		} else {
+//			SetLED(Color.green);			
+//		}
 	}
 
 	public void Reset() {
@@ -154,7 +171,7 @@ public class Node : MonoBehaviour {
 	public void SetCalibrationAllowed(bool value) {
 		calibrationAllowed = value;
 		if ( calibrationAllowed ) {
-			SetLED(Color.blue);
+			SetLED(Color.white);
 		}
 		else {
 			ResetLEDAndRumble();
@@ -169,16 +186,15 @@ public class Node : MonoBehaviour {
 	}
 
 	public void ResetLEDAndRumble() {
-		if ( !calibrated ) {
-			SetLED(Color.red);
-		}
-		else {
-			SetLED(type==1 ? Color.yellow : Color.green);
-		}
+		SetLED(type==1 ? Color.yellow : Color.blue);
 		SetRumble(0);
 	}
 
 	public void SetLED(Color color) {
+		if ( lostConnection ) {
+			return;
+		}
+
 		SetLED(color, null);
 	}
 

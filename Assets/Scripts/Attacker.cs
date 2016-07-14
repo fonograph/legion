@@ -26,17 +26,27 @@ public class Attacker : MonoBehaviour {
 
 		node.SetRumble(1f);
 		node.SetRumble(0, 1f);
+
+		node.SetLED(Color.green);
 	}
 
 	public void Reset() {
 		alive = false;
+
+		node.SetLED(Color.black);
 	}
 
 	public void Kill() {
 		alive = false;
 
 		node.SetRumble(1f);
-		node.SetRumble(0, 1.5f);
+		node.SetRumble(0, 2f);
+
+		node.SetLED(Color.red);
+		node.SetLED(Color.black, 1f);
 	}
 
+	public bool IsAlive() {
+		return alive;
+	}
 }

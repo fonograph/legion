@@ -8,25 +8,32 @@ public class Target : MonoBehaviour {
 
 	public Node node;
 
-	private bool alive;
-
 	void Start() {
 		node = GetComponent<Node>();
 		node.HitEvent += OnNodeHit;
 	}
 
 	void OnNodeHit(Node node) {
-		if ( alive ) {
-			HitEvent(this);
-		}
+		HitEvent(this);
 	}
 
 	public void Reset() {
-		alive = true;
+		node.SetLED(Color.white);
 	}
 
-	public void Kill() {
+	public void SignalDidDamage() {
+		node.Flash(Color.white, Color.black);	
+	}
+
+	public void SignalTookDamage() {
 		node.SetRumble(1f);
 		node.SetRumble(0, 1f);
+
+		node.Flash(Color.red, Color.black);
 	}
+
+	public void StopSignal() {
+		node.SetLED(Color.white);
+	}
+
 }
