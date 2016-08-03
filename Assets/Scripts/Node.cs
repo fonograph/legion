@@ -15,12 +15,12 @@ public class Node : MonoBehaviour {
 	public bool inGame;
 
 	private bool calibrated = false;
-	private float mxMin;
-	private float mxMax;
-	private float myMin;
-	private float myMax;
-	private float mzMin;
-	private float mzMax;
+	public float mxMin;
+	public float mxMax;
+	public float myMin;
+	public float myMax;
+	public float mzMin;
+	public float mzMax;
 
 	private bool calibrationAllowed = false;
 	private bool calibrating = false;
@@ -157,9 +157,10 @@ public class Node : MonoBehaviour {
 		//		}
 
 //		float D = Game.Instance.magnetThreshold;
-//		Debug.Log(mx.ToString() + " " + my.ToString() + " " + mz.ToString());
+//		Debug.Log(mx.ToString() + " " + my.ToString() + " " + mz.ToString() + " / " + mxMin.ToString()+"-"+mxMax.ToString() + " " + myMin.ToString()+"-"+myMax.ToString() + " " + mzMin.ToString()+"-"+mzMax.ToString());
 //		if ( (mx!=0 || my!=0 || mz!=0 ) && ( mx < mxMin-D || mx > mxMax+D || my < myMin-D || my > myMax+D || mz < mzMin-D || mz > mzMax+D ) ) {
 //			SetLED(Color.red);
+//			GameObject.FindObjectOfType<AudioSource>().PlayOneShot(GameObject.FindObjectOfType<Game>().nodeHitSound);
 //		} else {
 //			SetLED(Color.green);			
 //		}

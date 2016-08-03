@@ -46,6 +46,7 @@
   </ItemGroup>
   <ItemGroup>
      <Compile Include="Assets\Scripts\Attacker.cs" />
+     <Compile Include="Assets\Scripts\ControllerDebug.cs" />
      <Compile Include="Assets\Scripts\EditorButton.cs" />
      <Compile Include="Assets\Scripts\Game.cs" />
      <Compile Include="Assets\Scripts\Node.cs" />

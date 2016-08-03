@@ -52,6 +52,8 @@ public class Game : MonoBehaviour {
 	private int level;
 	private int attacks;
 
+	private Stack<Attacker> attackerSchedule;
+
 	public AudioClip nodeHitSound;
 	public List<AudioClip> attackerKilledSounds;
 	public AudioClip gameOverSound;
@@ -75,6 +77,8 @@ public class Game : MonoBehaviour {
 		{
 			Node node = Instantiate(nodePrefab);
 			nodes.Add(node);
+
+			node.transform.SetParent(this.transform);
 		}
 
 		phase = Phase.Connecting;
@@ -190,6 +194,15 @@ public class Game : MonoBehaviour {
 			attacker.Reset();
 		}
 
+		// create a schedule of attackers. just keep shuffling the list and putting the results on top -- this ensures randomization with an equal distribution
+		attackerSchedule = new Stack<Attacker>();
+		for ( int i=0; i<999; i++ ) {
+			attackers.Shuffle();
+			foreach ( Attacker a in attackers ) {
+				attackerSchedule.Push(a);
+			}
+		}
+
 		Invoke("SendAttackers", timeBetweenAttacks);
 	}
 
@@ -218,9 +231,8 @@ public class Game : MonoBehaviour {
 	void SendAttackers() {
 		int count = level;
 
-		attackers.Shuffle();
 		for ( int i=0; i<count; i++ ) {
-			attackers[i].Activate();
+			attackerSchedule.Pop().Activate();
 		}
 
 		attacks++;
