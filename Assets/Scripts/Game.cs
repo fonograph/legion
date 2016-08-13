@@ -23,46 +23,62 @@ public class Game : MonoBehaviour {
 	[Range(1, 5)]
 	public int hpCount;
 
-	[Range(1,10)]
-	public int timeBetweenAttacks;
+	[Range(1, 5)]
+	public int startTimeBetweenAttacks;
 
-	[Range(1,10)]
-	public int level1Attacks;
+	[Range(0, 1)]
+	public float reduceTimeBeweenAttacks;
 
-	[Range(1,10)]
-	public int level2Attacks;
+	[Range(1, 10)]
+	public int startTimeForOverlappedAttacks;
 
-	[Range(1,100)]
-	public int level3Attacks;
+	[Range(0, 1)]
+	public float reduceTimeForOverlappedAttacks;
+
 
 	public static Game Instance;
 
-	private AudioSource audioSource;
+	private AudioSource audioSource1;
+	private AudioSource audioSource2;
+	private AudioSource audioSource3;
 
 	private List<Node> nodes;
 
 	private List<Attacker> attackers;
 	private List<Target> targets;
 
+	private float timeBetweenAttacks;
+	private float timeForOverlappedAttacks;
+
+	private DateTime mostRecentAttackerStartTime;
+
 	private Phase phase;
 //	private bool isPractice;
 
 	private bool invincible;
 	private int hp;
-	private int level;
-	private int attacks;
 
 	private Stack<Attacker> attackerSchedule;
 
 	public AudioClip nodeHitSound;
 	public List<AudioClip> attackerKilledSounds;
+	public AudioClip attackerKilledScream;
 	public AudioClip gameOverSound;
+	public List<AudioClip> music;
+
+	[Range(0, 1)]
+	public float musicVolume;
+	private int musicIdx;
+
 
 //	private IEnumerator ballCycleRoutine;
 
 	void Awake() {
 		Instance = this;
-		audioSource = gameObject.GetComponent<AudioSource>();
+		AudioSource[] audioSources = gameObject.GetComponents<AudioSource>();
+		audioSource1 = audioSources[0];
+		audioSource2 = audioSources[1];
+		audioSource3 = audioSources[2];
 	}
 
 	void Start() {
@@ -180,8 +196,9 @@ public class Game : MonoBehaviour {
 
 		invincible = false;
 		hp = hpCount;
-		level = 1;
-		attacks = 0;
+
+		timeBetweenAttacks = startTimeBetweenAttacks;
+		timeForOverlappedAttacks = startTimeForOverlappedAttacks;
 
 		foreach ( Node node in nodes ) {
 			node.Reset();
@@ -203,7 +220,12 @@ public class Game : MonoBehaviour {
 			}
 		}
 
-		Invoke("SendAttackers", timeBetweenAttacks);
+		Invoke("SendAttacker", timeBetweenAttacks);
+
+		audioSource3.clip = music[musicIdx++ % music.Count];
+		audioSource3.volume = musicVolume;
+		audioSource3.loop = true;
+		audioSource3.Play();
 	}
 
 
@@ -215,8 +237,11 @@ public class Game : MonoBehaviour {
 			node.ResetLEDAndRumble();
 		}
 
-		CancelInvoke("SendAttackers");
+		CancelInvoke("SendAttacker");
+		CancelInvoke("SendOverlappedAttacker");
 		CancelInvoke("StopInvincible");
+
+		audioSource3.Stop();
 	}
 
 //	void EndGame() {
@@ -228,23 +253,22 @@ public class Game : MonoBehaviour {
 //		}
 //	}
 
-	void SendAttackers() {
-		int count = level;
-
-		for ( int i=0; i<count; i++ ) {
-			attackerSchedule.Pop().Activate();
-		}
-
-		attacks++;
+	void SendAttacker() {
+		attackerSchedule.Pop().Activate();
 	} 
+
+	void SendOverlappedAttacker() {
+		SendAttacker();
+	}
 
 	void OnTargetHit(Target target) {
 		if ( !invincible ) {
-			audioSource.PlayOneShot(nodeHitSound);
+			audioSource1.PlayOneShot(nodeHitSound);
 
 			hp--;
 			if ( hp == 0 ) {
-				audioSource.PlayOneShot(gameOverSound);
+				audioSource2.clip = gameOverSound;
+				audioSource2.PlayDelayed(1f);
 				StopGame();
 				return;
 			}
@@ -258,7 +282,10 @@ public class Game : MonoBehaviour {
 	}
 
 	void OnAttackerHit(Attacker attacker) {
-		audioSource.PlayOneShot(attackerKilledSounds[UnityEngine.Random.Range(0, attackerKilledSounds.Count-1)]);
+		audioSource1.PlayOneShot(attackerKilledSounds[UnityEngine.Random.Range(0, attackerKilledSounds.Count-1)]);
+		audioSource2.clip = attackerKilledScream;
+		audioSource2.PlayDelayed(0.3f);
+
 		attacker.Kill();
 
 		foreach ( Target t in targets ) {
@@ -274,14 +301,27 @@ public class Game : MonoBehaviour {
 			}
 		}
 
-		if ( allDead ) {
-			int levelTarget = level == 1 ? level1Attacks : level == 2 ? level2Attacks : level == 3 ? level3Attacks : 99999;
-			if ( attacks >= levelTarget ) {
-				level++;
-				attacks = 0;
-			}
+		CancelInvoke("SendOverlappedAttacker");
+		bool sendOverlap = false;
 
-			Invoke("SendAttackers", timeBetweenAttacks);
+		if ( allDead ) {
+			if ( timeBetweenAttacks < 0 ) { // check this first, so a 0-count timeBetweenAttacks gets to execute before overlap begins
+				timeBetweenAttacks = 0;
+				sendOverlap = true;
+			}
+			Invoke("SendAttacker", timeBetweenAttacks);
+			timeBetweenAttacks -= reduceTimeBeweenAttacks;
+		}
+		else {
+			sendOverlap = true; // there's a still an attacker in there who was overlapping, so queue another overlap
+		}
+
+		if ( sendOverlap ) {
+			Invoke("SendOverlappedAttacker", timeForOverlappedAttacks);
+			timeForOverlappedAttacks -= reduceTimeForOverlappedAttacks;
+			if ( timeForOverlappedAttacks < 0 ) {
+				timeForOverlappedAttacks = 0;
+			} 
 		}
 	}
 

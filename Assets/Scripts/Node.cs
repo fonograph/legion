@@ -14,7 +14,10 @@ public class Node : MonoBehaviour {
 
 	public bool inGame;
 
-	private bool calibrated = false;
+	private float mx;
+	private float my;
+	private float mz;
+
 	public float mxMin;
 	public float mxMax;
 	public float myMin;
@@ -22,14 +25,23 @@ public class Node : MonoBehaviour {
 	public float mzMin;
 	public float mzMax;
 
-	private bool calibrationAllowed = false;
-	private bool calibrating = false;
-	private float calibratingXMin;
-	private float calibratingXMax;
-	private float calibratingYMin;
-	private float calibratingYMax;
-	private float calibratingZMin;
-	private float calibratingZMax;
+	private bool canIBeCalibrating;
+	private int mxMinDriftTicks;
+	private int mxMaxDriftTicks;
+	private int myMinDriftTicks;
+	private int myMaxDriftTicks;
+	private int mzMinDriftTicks;
+	private int mzMaxDriftTicks;
+
+//	private bool calibrated = false;
+//	private bool calibrationAllowed = false;
+//	private bool calibrating = false;
+//	private float calibratingXMin;
+//	private float calibratingXMax;
+//	private float calibratingYMin;
+//	private float calibratingYMax;
+//	private float calibratingZMin;
+//	private float calibratingZMax;
 
 	private bool lostConnection = false;
 
@@ -46,8 +58,25 @@ public class Node : MonoBehaviour {
 
 	public void Init(UniMoveController c) {
 		controller = c;
+
+		canIBeCalibrating = true;
+		mxMax = -2048;
+		mxMin = 2048;
+		myMax = -2048;
+		myMin = 2048;
+		mzMax = -2048;
+		mzMax = 2048;
+		mxMinDriftTicks = 0;
+		mxMaxDriftTicks = 0;
+		myMinDriftTicks = 0;
+		myMaxDriftTicks = 0;
+		mzMinDriftTicks = 0;
+		mzMaxDriftTicks = 0;
+
 		LoadCalibration();
 		ResetLEDAndRumble();
+
+		Invoke("CalibrateForever", 0);
 	}
 
 
@@ -58,42 +87,45 @@ public class Node : MonoBehaviour {
 			return;
 		}
 
-		if ( calibrationAllowed ) {
-			// Button presses
-			if ( controller.GetButtonDown(PSMoveButton.Circle) ) {
-				if ( !calibrating ) {
-					calibrating = true;
-					calibratingXMax = -2048;
-					calibratingXMin = 2048;
-					calibratingYMax = -2048;
-					calibratingYMin = 2048;
-					calibratingZMax = -2048;
-					calibratingZMin = 2048;
-				}
-				else {
-					calibrating = false;
-					PlayerPrefs.SetInt(controller.Serial + "Calibrated", 1);
-					PlayerPrefs.SetFloat(controller.Serial + "XMax", calibratingXMax);
-					PlayerPrefs.SetFloat(controller.Serial + "XMin", calibratingXMin);
-					PlayerPrefs.SetFloat(controller.Serial + "YMax", calibratingYMax);
-					PlayerPrefs.SetFloat(controller.Serial + "YMin", calibratingYMin);
-					PlayerPrefs.SetFloat(controller.Serial + "ZMax", calibratingZMax);
-					PlayerPrefs.SetFloat(controller.Serial + "ZMin", calibratingZMin);
-					LoadCalibration();
-					ResetLEDAndRumble();
-				}
+		if ( (controller.GetButton(PSMoveButton.Square) && controller.GetButton(PSMoveButton.Circle) && controller.GetButton(PSMoveButton.Cross) && controller.GetButton(PSMoveButton.Square)) && 
+			(controller.GetButtonDown(PSMoveButton.Square) || controller.GetButtonDown(PSMoveButton.Circle) || controller.GetButtonDown(PSMoveButton.Cross) || controller.GetButtonDown(PSMoveButton.Square))
+		) {
+			if ( type == 1 ) {
+				type = 2;
+				PlayerPrefs.SetInt(controller.Serial + "Type", 2);
 			}
-			if ( controller.GetButtonDown(PSMoveButton.Square) ) {
-				if ( type == 1 ) {
-					type = 2;
-					PlayerPrefs.SetInt(controller.Serial + "Type", 2);
-				}
-				else {
-					type = 1;
-					PlayerPrefs.SetInt(controller.Serial + "Type", 1);
-				}
-				ResetLEDAndRumble();
+			else {
+				type = 1;
+				PlayerPrefs.SetInt(controller.Serial + "Type", 1);
 			}
+			ResetLEDAndRumble();
+		}
+
+//		if ( calibrationAllowed ) {
+//			// Button presses
+//			if ( controller.GetButtonDown(PSMoveButton.Circle) ) {
+//				if ( !calibrating ) {
+//					calibrating = true;
+//					calibratingXMax = -2048;
+//					calibratingXMin = 2048;
+//					calibratingYMax = -2048;
+//					calibratingYMin = 2048;
+//					calibratingZMax = -2048;
+//					calibratingZMin = 2048;
+//				}
+//				else {
+//					calibrating = false;
+//					PlayerPrefs.SetInt(controller.Serial + "Calibrated", 1);
+//					PlayerPrefs.SetFloat(controller.Serial + "XMax", calibratingXMax);
+//					PlayerPrefs.SetFloat(controller.Serial + "XMin", calibratingXMin);
+//					PlayerPrefs.SetFloat(controller.Serial + "YMax", calibratingYMax);
+//					PlayerPrefs.SetFloat(controller.Serial + "YMin", calibratingYMin);
+//					PlayerPrefs.SetFloat(controller.Serial + "ZMax", calibratingZMax);
+//					PlayerPrefs.SetFloat(controller.Serial + "ZMin", calibratingZMin);
+//					LoadCalibration();
+//					ResetLEDAndRumble();
+//				}
+//			}
 
 			// accelerometer test
 //			if ( !calibrating && (controller.Acceleration-lastAccel).magnitude > Game.Instance.attackAccelThreshold )  {
@@ -101,11 +133,11 @@ public class Node : MonoBehaviour {
 //				SetLED(Color.black, 1f);
 //			}
 
-		}
+//		}
 
-		float mx = controller.Magnetometer.x;
-		float my = controller.Magnetometer.y;
-		float mz = controller.Magnetometer.z;		
+		mx = controller.Magnetometer.x;
+		my = controller.Magnetometer.y;
+		mz = controller.Magnetometer.z;		
 //		Debug.Log (mx.ToString() + " " + my.ToString() + " " + mz.ToString());
 
 		if ( inGame ) {
@@ -118,22 +150,22 @@ public class Node : MonoBehaviour {
 			}
 		}
 
-		if ( calibrating ) {
-			if ( mx > calibratingXMax ) calibratingXMax = mx;
-			if ( mx < calibratingXMin ) calibratingXMin = mx;
-			if ( my > calibratingYMax ) calibratingYMax = my;
-			if ( my < calibratingYMin ) calibratingYMin = my;
-			if ( mz > calibratingZMax ) calibratingZMax = mz;
-			if ( mz < calibratingZMin ) calibratingZMin = mz;
-			float target = 360;
-			float px = Math.Min(1, ( calibratingXMax - calibratingXMin ) / target);
-			float py = Math.Min(1, ( calibratingYMax - calibratingYMin ) / target);
-			float pz = Math.Min(1, ( calibratingZMax - calibratingZMin ) / target);
-			Debug.Log(px.ToString() + " " + py.ToString() + " " + pz.ToString());
-			float p = Mathf.Min(px, Mathf.Min(py, pz));
-			p = Mathf.Pow(p, 4f); // skew color curve
-			SetLED(new Color(1-p, p, 0));
-		}
+//		if ( calibrating ) {
+//			if ( mx > calibratingXMax ) calibratingXMax = mx;
+//			if ( mx < calibratingXMin ) calibratingXMin = mx;
+//			if ( my > calibratingYMax ) calibratingYMax = my;
+//			if ( my < calibratingYMin ) calibratingYMin = my;
+//			if ( mz > calibratingZMax ) calibratingZMax = mz;
+//			if ( mz < calibratingZMin ) calibratingZMin = mz;
+//			float target = 360;
+//			float px = Math.Min(1, ( calibratingXMax - calibratingXMin ) / target);
+//			float py = Math.Min(1, ( calibratingYMax - calibratingYMin ) / target);
+//			float pz = Math.Min(1, ( calibratingZMax - calibratingZMin ) / target);
+//			Debug.Log(px.ToString() + " " + py.ToString() + " " + pz.ToString());
+//			float p = Mathf.Min(px, Mathf.Min(py, pz));
+//			p = Mathf.Pow(p, 4f); // skew color curve
+//			SetLED(new Color(1-p, p, 0));
+//		}
 
 		if ( mx==0 && my==0 && mz==0 ) {
 			ResetLEDAndRumble();
@@ -143,6 +175,8 @@ public class Node : MonoBehaviour {
 			lostConnection = false;
 			ResetLEDAndRumble();
 		}
+
+
 
 //		lastAccel = controller.Acceleration;
 
@@ -169,14 +203,88 @@ public class Node : MonoBehaviour {
 	public void Reset() {
 	}
 
+	public void AllowCalibration() {
+		canIBeCalibrating = true;
+	}
+	public void UnallowCalibration() {
+		canIBeCalibrating = false;
+	}
+
+	public void CalibrateForever() {
+		int thresholdTicks = 2;
+		if ( canIBeCalibrating ) {
+			if ( mx < mxMin ) {
+				mxMinDriftTicks++;
+				if ( mxMinDriftTicks >= thresholdTicks ) {
+					mxMin = mx;
+					mxMax = mxMin+360;
+					mxMinDriftTicks = 0;
+					PlayerPrefs.SetFloat(controller.Serial + "XMax", mxMax);
+					PlayerPrefs.SetFloat(controller.Serial + "XMin", mxMin);
+				}
+			}
+			if ( mx > mxMax ) {
+				mxMaxDriftTicks++;
+				if ( mxMaxDriftTicks >= thresholdTicks ) {
+					mxMax = mx;
+					mxMin = mxMax-360;
+					mxMaxDriftTicks = 0;
+					PlayerPrefs.SetFloat(controller.Serial + "XMax", mxMax);
+					PlayerPrefs.SetFloat(controller.Serial + "XMin", mxMin);
+				}
+			}
+			if ( my < myMin ) {
+				myMinDriftTicks++;
+				if ( myMinDriftTicks >= thresholdTicks ) {
+					myMin = my;
+					myMax = myMin+360;
+					myMinDriftTicks = 0;
+					PlayerPrefs.SetFloat(controller.Serial + "YMax", myMax);
+					PlayerPrefs.SetFloat(controller.Serial + "YMin", myMin);
+				}
+			}
+			if ( my > myMax ) {
+				myMaxDriftTicks++;
+				if ( myMaxDriftTicks >= thresholdTicks ) {
+					myMax = my;
+					myMin = myMax-360;
+					myMaxDriftTicks = 0;
+					PlayerPrefs.SetFloat(controller.Serial + "YMax", myMax);
+					PlayerPrefs.SetFloat(controller.Serial + "YMin", myMin);
+				}
+			}
+			if ( mz < mzMin ) {
+				mzMinDriftTicks++;
+				if ( mzMinDriftTicks >= thresholdTicks ) {
+					mzMin = mz;
+					mzMax = mzMin+360;
+					mzMinDriftTicks = 0;
+					PlayerPrefs.SetFloat(controller.Serial + "ZMax", mzMax);
+					PlayerPrefs.SetFloat(controller.Serial + "ZMin", mzMin);
+				}
+			}
+			if ( mz > mzMax ) {
+				mzMaxDriftTicks++;
+				if ( mzMaxDriftTicks >= thresholdTicks ) {
+					mzMax = mz;
+					mzMin = mzMax-360;
+					mzMaxDriftTicks = 0;
+					PlayerPrefs.SetFloat(controller.Serial + "ZMax", mzMax);
+					PlayerPrefs.SetFloat(controller.Serial + "ZMin", mzMin);
+				}
+			}
+		}
+		Invoke("CalibrateForever", 0.5f);
+	}
+
 	public void SetCalibrationAllowed(bool value) {
-		calibrationAllowed = value;
-		if ( calibrationAllowed ) {
-			SetLED(Color.white);
-		}
-		else {
-			ResetLEDAndRumble();
-		}
+//		calibrationAllowed = value;
+//		if ( calibrationAllowed ) {
+//			SetLED(Color.white);
+//		}
+//		else {
+//			ResetLEDAndRumble();
+//		}
 	}
 
 	public float GetOrientationDifference(Node node) {
@@ -231,6 +339,7 @@ public class Node : MonoBehaviour {
 			StartCoroutine(setRumbleRoutine);
 		}
 		else {
+//			rumble = 0;
 			controller.SetRumble(rumble);
 		}
 	}
@@ -255,7 +364,7 @@ public class Node : MonoBehaviour {
 	}
 
 	private void LoadCalibration() {
-		calibrated = PlayerPrefs.GetInt(controller.Serial + "Calibrated", 0) == 1;
+//		calibrated = PlayerPrefs.GetInt(controller.Serial + "Calibrated", 0) == 1;
 		mxMax = PlayerPrefs.GetFloat(controller.Serial + "XMax");
 		mxMin = PlayerPrefs.GetFloat(controller.Serial + "XMin");
 		myMax = PlayerPrefs.GetFloat(controller.Serial + "YMax");
@@ -264,9 +373,9 @@ public class Node : MonoBehaviour {
 		mzMin = PlayerPrefs.GetFloat(controller.Serial + "ZMin");
 		type = PlayerPrefs.GetInt(controller.Serial + "Type", 1);
 
-		if ( !calibrated ) {
-			Debug.LogWarning("Magnet not calibrated!");
-		}
+//		if ( !calibrated ) {
+//			Debug.LogWarning("Magnet not calibrated!");
+//		}
 	}
 	
 
