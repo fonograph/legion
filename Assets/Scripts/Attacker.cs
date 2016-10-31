@@ -5,6 +5,7 @@ using System;
 public class Attacker : MonoBehaviour {
 
 	public event Action<Attacker> HitEvent;
+	public event Action<Attacker> TimeoutEvent;
 
 	private Node node;
 
@@ -23,21 +24,26 @@ public class Attacker : MonoBehaviour {
 
 	public void Activate() {
 		alive = true;
+		CancelInvoke("Timeout");
 
 		node.SetRumble(1f);
 		node.SetRumble(0, 1f);
 
 		node.SetLED(Color.green);
+
+		Invoke("Timeout", Game.Instance.countdownTime);
 	}
 
 	public void Reset() {
 		alive = false;
+		CancelInvoke("Timeout");
 
 		node.SetLED(Color.black);
 	}
 
 	public void Kill() {
 		alive = false;
+		CancelInvoke("Timeout");
 
 		node.SetRumble(1f);
 		node.SetRumble(0, 2f);
@@ -46,7 +52,14 @@ public class Attacker : MonoBehaviour {
 		node.SetLED(Color.black, 1f);
 	}
 
+	private void Timeout() {
+		if ( alive ) {
+			TimeoutEvent(this);
+		}
+	}
+
 	public bool IsAlive() {
 		return alive;
 	}
+		
 }

@@ -27,3 +27,15 @@
 /Projects/PSMoveGame2/Temp/bin/Debug/Unity.CecilTools.dll
 /Projects/PSMoveGame2/Temp/bin/Debug/Mono.Cecil.Pdb.dll
 /Projects/PSMoveGame2/Temp/bin/Debug/Mono.Cecil.Mdb.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.Advertisements.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEditor.PlaymodeTestsRunner.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.PlaymodeTestsRunner.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.Analytics.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEditor.Analytics.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEditor.HoloLens.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.HoloLens.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.Purchasing.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEditor.VR.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.VR.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEditor.iOS.Extensions.Xcode.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEditor.iOS.Extensions.Xcode.xml

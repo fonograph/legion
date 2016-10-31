@@ -17,3 +17,9 @@
 /Projects/PSMoveGame2/Temp/bin/Debug/Unity.CecilTools.dll
 /Projects/PSMoveGame2/Temp/bin/Debug/Mono.Cecil.Pdb.dll
 /Projects/PSMoveGame2/Temp/bin/Debug/Mono.Cecil.Mdb.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.Advertisements.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.PlaymodeTestsRunner.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.Analytics.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.HoloLens.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.Purchasing.dll
+/Projects/PSMoveGame2/Temp/bin/Debug/UnityEngine.VR.dll

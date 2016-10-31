@@ -32,6 +32,11 @@ public class Target : MonoBehaviour {
 		node.Flash(Color.red, Color.black);
 	}
 
+	public void SignalDead() {
+		node.SetRumble(0);
+		node.SetLED(Color.red);
+	}
+
 	public void StopSignal() {
 		node.SetLED(Color.white);
 	}

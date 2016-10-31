@@ -35,12 +35,16 @@ public class Game : MonoBehaviour {
 	[Range(0, 1)]
 	public float reduceTimeForOverlappedAttacks;
 
+	[Range(4, 10)]
+	public int countdownTime;
+
 
 	public static Game Instance;
 
 	private AudioSource audioSource1;
 	private AudioSource audioSource2;
-	private AudioSource audioSource3;
+
+	private MusicManager music;
 
 	private List<Node> nodes;
 
@@ -60,16 +64,13 @@ public class Game : MonoBehaviour {
 
 	private Stack<Attacker> attackerSchedule;
 
+	private int activeAttackerCount;
+
 	public AudioClip nodeHitSound;
 	public List<AudioClip> attackerKilledSounds;
 	public AudioClip attackerKilledScream;
+	public AudioClip attackerTimeoutSound;
 	public AudioClip gameOverSound;
-	public List<AudioClip> music;
-
-	[Range(0, 1)]
-	public float musicVolume;
-	private int musicIdx;
-
 
 //	private IEnumerator ballCycleRoutine;
 
@@ -78,7 +79,7 @@ public class Game : MonoBehaviour {
 		AudioSource[] audioSources = gameObject.GetComponents<AudioSource>();
 		audioSource1 = audioSources[0];
 		audioSource2 = audioSources[1];
-		audioSource3 = audioSources[2];
+		music = GameObject.FindObjectOfType<MusicManager>();
 	}
 
 	void Start() {
@@ -121,6 +122,7 @@ public class Game : MonoBehaviour {
 						else {
 							Attacker attacker = nodes[i].gameObject.AddComponent<Attacker>();
 							attacker.HitEvent += OnAttackerHit;
+							attacker.TimeoutEvent += OnAttackerTimeout;
 							attackers.Add(attacker);
 						}
 
@@ -150,21 +152,8 @@ public class Game : MonoBehaviour {
 		}
 
 		else if ( phase == Phase.Playing ) {
-			if ( Input.GetKeyDown(KeyCode.Alpha1) ) {
-				attackers[0].Activate();
-			}
-			else if ( Input.GetKeyDown(KeyCode.Alpha2) ) {
-				attackers[1].Activate();
-			}
-			else if ( Input.GetKeyDown(KeyCode.Alpha3) ) {
-				attackers[2].Activate();
-			}
-			else if ( Input.GetKeyDown(KeyCode.Alpha4) ) {
-				attackers[3].Activate();
-			}
-
 			// stop game
-			else if ( Input.GetKeyDown(KeyCode.Space) ) {
+			if ( Input.GetKeyDown(KeyCode.Space) ) {
 				StopGame();
 			}
 		}
@@ -200,8 +189,10 @@ public class Game : MonoBehaviour {
 		timeBetweenAttacks = startTimeBetweenAttacks;
 		timeForOverlappedAttacks = startTimeForOverlappedAttacks;
 
+		activeAttackerCount = 0;
+
 		foreach ( Node node in nodes ) {
-			node.Reset();
+			node.ResetLEDAndRumble();
 			node.inGame = true;
 		}
 		foreach ( Target target in targets ) {
@@ -215,6 +206,12 @@ public class Game : MonoBehaviour {
 		attackerSchedule = new Stack<Attacker>();
 		for ( int i=0; i<999; i++ ) {
 			attackers.Shuffle();
+
+			// make sure 2 in a row doesn't happen
+			while ( attackerSchedule.Count > 1 && attackerSchedule.Peek() == attackers[0] ) {
+				attackers.Shuffle();
+			}
+
 			foreach ( Attacker a in attackers ) {
 				attackerSchedule.Push(a);
 			}
@@ -222,10 +219,8 @@ public class Game : MonoBehaviour {
 
 		Invoke("SendAttacker", timeBetweenAttacks);
 
-		audioSource3.clip = music[musicIdx++ % music.Count];
-		audioSource3.volume = musicVolume;
-		audioSource3.loop = true;
-		audioSource3.Play();
+		music.StartGame();
+		music.SetAttackers(activeAttackerCount);
 	}
 
 
@@ -236,25 +231,40 @@ public class Game : MonoBehaviour {
 			node.inGame = false;
 			node.ResetLEDAndRumble();
 		}
+		foreach ( Target target in targets ) {
+			target.Reset();
+		}
+		foreach ( Attacker attacker in attackers ) {
+			attacker.Reset();
+		}
 
 		CancelInvoke("SendAttacker");
 		CancelInvoke("SendOverlappedAttacker");
 		CancelInvoke("StopInvincible");
 
-		audioSource3.Stop();
+		music.Reset();
 	}
 
-//	void EndGame() {
-//		phase = Phase.Waiting;
-//
-//		foreach ( Node node in nodes ) {
-//			node.inGame = false;
-//			node.ResetLEDAndRumble();
-//		}
-//	}
+	void EndGame() {
+		phase = Phase.Waiting;
+
+		audioSource2.clip = gameOverSound;
+		audioSource2.PlayDelayed(1f);
+
+		music.Reset();
+
+		foreach ( Target target in targets ) {
+			target.SignalDead();
+		}
+		foreach ( Attacker attacker in attackers ) {
+			attacker.Reset();
+		}
+	}
 
 	void SendAttacker() {
 		attackerSchedule.Pop().Activate();
+
+		music.SetAttackers(++activeAttackerCount);
 	} 
 
 	void SendOverlappedAttacker() {
@@ -267,9 +277,7 @@ public class Game : MonoBehaviour {
 
 			hp--;
 			if ( hp == 0 ) {
-				audioSource2.clip = gameOverSound;
-				audioSource2.PlayDelayed(1f);
-				StopGame();
+				EndGame();
 				return;
 			}
 
@@ -278,6 +286,13 @@ public class Game : MonoBehaviour {
 			}
 			StartInvincible();
 			Invoke("StopInvincible", invincibleLengthOnDamage);
+
+			// end current attackers
+			foreach ( Attacker attacker in attackers ) {
+				if ( attacker.IsAlive() ) {
+					EndAttacker(attacker);
+				}
+			}
 		}
 	}
 
@@ -286,6 +301,16 @@ public class Game : MonoBehaviour {
 		audioSource2.clip = attackerKilledScream;
 		audioSource2.PlayDelayed(0.3f);
 
+		EndAttacker(attacker);
+	}
+
+	void OnAttackerTimeout(Attacker attacker) {
+		audioSource1.PlayOneShot(attackerTimeoutSound);
+
+		EndAttacker(attacker);
+	}
+
+	void EndAttacker(Attacker attacker) {
 		attacker.Kill();
 
 		foreach ( Target t in targets ) {
@@ -293,6 +318,8 @@ public class Game : MonoBehaviour {
 		}
 		StartInvincible();
 		Invoke("StopInvincible", invincibleLengthOnKill);
+
+		music.SetAttackers(--activeAttackerCount);
 
 		bool allDead = true;
 		foreach ( Attacker a in attackers ) {

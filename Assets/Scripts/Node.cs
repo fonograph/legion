@@ -200,9 +200,6 @@ public class Node : MonoBehaviour {
 //		}
 	}
 
-	public void Reset() {
-	}
-
 	public void AllowCalibration() {
 		canIBeCalibrating = true;
 	}
