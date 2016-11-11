@@ -23,19 +23,28 @@ public class Game : MonoBehaviour {
 	[Range(1, 5)]
 	public int hpCount;
 
-	[Range(1, 5)]
-	public int startTimeBetweenAttacks;
+	[Range(0, 5)]
+	public int startMinTimeBetweenAttacks;
 
 	[Range(0, 1)]
-	public float reduceTimeBeweenAttacks;
+	public float reduceMinTimeBeweenAttacks;
+
+	[Range(0, 5)]
+	public int startMaxTimeBetweenAttacks;
+
+	[Range(0, 1)]
+	public float reduceMaxTimeBeweenAttacks;
+
+	[Range(1,10)]
+	public int startAttackerCount;
+
+	[Range(1,5)]
+	public int increaseAttackerCount;
+
+	[Range(1,10)]
+	public int breakTime;
 
 	[Range(1, 10)]
-	public int startTimeForOverlappedAttacks;
-
-	[Range(0, 1)]
-	public float reduceTimeForOverlappedAttacks;
-
-	[Range(4, 10)]
 	public int countdownTime;
 
 
@@ -45,31 +54,34 @@ public class Game : MonoBehaviour {
 	private AudioSource audioSource2;
 
 	private MusicManager music;
+	private Display display;
 
 	private List<Node> nodes;
 
 	private List<Attacker> attackers;
 	private List<Target> targets;
 
-	private float timeBetweenAttacks;
-	private float timeForOverlappedAttacks;
-
-	private DateTime mostRecentAttackerStartTime;
-
-	private Phase phase;
-//	private bool isPractice;
-
-	private bool invincible;
-	private int hp;
-
 	private Stack<Attacker> attackerSchedule;
 
-	private int activeAttackerCount;
+	private Phase phase;
+	private bool isPractice;
+	private int wave;
+	private int positionInWave;
+	private float minTimeBetweenAttacks;
+	private float maxTimeBetweenAttacks;
+	private int attackerCount;
+	private bool invincible;
+	private int hp;
+	private int score;
 
 	public AudioClip nodeHitSound;
+	public AudioClip healSound;
 	public List<AudioClip> attackerKilledSounds;
 	public AudioClip attackerKilledScream;
 	public AudioClip attackerTimeoutSound;
+	public AudioClip waveStartSound;
+	public AudioClip waveEndSound;
+	public AudioClip gameStartSound;
 	public AudioClip gameOverSound;
 
 //	private IEnumerator ballCycleRoutine;
@@ -80,6 +92,7 @@ public class Game : MonoBehaviour {
 		audioSource1 = audioSources[0];
 		audioSource2 = audioSources[1];
 		music = GameObject.FindObjectOfType<MusicManager>();
+		display = GameObject.FindObjectOfType<Display>();
 	}
 
 	void Start() {
@@ -175,21 +188,22 @@ public class Game : MonoBehaviour {
 		}
 
 		if ( Input.GetKeyDown(KeyCode.D) ) {
+			ControllerDebug.Active = !ControllerDebug.Active;
 //			debugContainer.SetActive(!debugContainer.activeSelf);
 		}
 	}
 
 	void StartGame(bool practice) {
 		phase = Phase.Playing;
-//		isPractice = practice;
+		isPractice = practice;
 
 		invincible = false;
 		hp = hpCount;
-
-		timeBetweenAttacks = startTimeBetweenAttacks;
-		timeForOverlappedAttacks = startTimeForOverlappedAttacks;
-
-		activeAttackerCount = 0;
+		score = 0;
+		wave = 0;
+		minTimeBetweenAttacks = startMinTimeBetweenAttacks;
+		maxTimeBetweenAttacks = startMaxTimeBetweenAttacks;
+		attackerCount = startAttackerCount;
 
 		foreach ( Node node in nodes ) {
 			node.ResetLEDAndRumble();
@@ -217,10 +231,24 @@ public class Game : MonoBehaviour {
 			}
 		}
 
-		Invoke("SendAttacker", timeBetweenAttacks);
+		Invoke("StartNextWave", 3f);
 
-		music.StartGame();
-		music.SetAttackers(activeAttackerCount);
+		audioSource1.PlayOneShot(gameStartSound);
+		display.ShowStart();
+		display.SetLife(hp);
+		display.SetScore(0);
+
+		if ( !isPractice ) {
+			music.StartGame();
+		}
+	}
+
+	void KillProcesses() {
+		CancelInvoke("SendAttacker");
+		CancelInvoke("SendOverlappedAttacker");
+		CancelInvoke("StopInvincible");
+		CancelInvoke("Heal");
+		CancelInvoke("StartNextWave");
 	}
 
 
@@ -238,20 +266,17 @@ public class Game : MonoBehaviour {
 			attacker.Reset();
 		}
 
-		CancelInvoke("SendAttacker");
-		CancelInvoke("SendOverlappedAttacker");
-		CancelInvoke("StopInvincible");
+		KillProcesses();
 
 		music.Reset();
+		display.Reset(0, hpCount);
 	}
 
 	void EndGame() {
-		phase = Phase.Waiting;
+		phase = Phase.Ended;
 
 		audioSource2.clip = gameOverSound;
 		audioSource2.PlayDelayed(1f);
-
-		music.Reset();
 
 		foreach ( Target target in targets ) {
 			target.SignalDead();
@@ -259,23 +284,75 @@ public class Game : MonoBehaviour {
 		foreach ( Attacker attacker in attackers ) {
 			attacker.Reset();
 		}
+
+		KillProcesses();
+
+		music.Reset();
+		display.ShowGameOver();
+	}
+
+	void StartNextWave() {
+		wave++;
+		positionInWave = 0;
+
+		Invoke("SendAttacker", 2f);
+
+		audioSource2.clip = waveStartSound;
+		audioSource2.PlayDelayed(1f);
+		display.ShowWaveStart(wave);
+
+		if ( !isPractice ) {
+			StartCoroutine(music.SetWave(wave, 0.5f));
+		}
+	}
+
+	void EndWave() {
+		Invoke("Heal", 3f);
+		Invoke("StartNextWave", (float)breakTime);
+
+		// increase difficulty
+		attackerCount++;
+
+		minTimeBetweenAttacks -= reduceMinTimeBeweenAttacks;
+		if ( minTimeBetweenAttacks < 0 ) {
+			minTimeBetweenAttacks = 0;
+		}
+
+		maxTimeBetweenAttacks -= reduceMaxTimeBeweenAttacks;
+		if ( maxTimeBetweenAttacks < 0 ) {
+			maxTimeBetweenAttacks = 0;
+		}
+
+		audioSource2.clip = waveStartSound;
+		audioSource2.PlayDelayed(1f);
+		display.ShowWaveEnd(wave);
+
+		if ( !isPractice ) {
+			StartCoroutine(music.SetBreak(0));
+		}
+	}
+
+	void Heal() {
+		if ( hp < hpCount ) {
+			hp++;
+			display.SetLife(hp);
+			audioSource1.PlayOneShot(healSound);
+		}
 	}
 
 	void SendAttacker() {
 		attackerSchedule.Pop().Activate();
-
-		music.SetAttackers(++activeAttackerCount);
 	} 
-
-	void SendOverlappedAttacker() {
-		SendAttacker();
-	}
 
 	void OnTargetHit(Target target) {
 		if ( !invincible ) {
 			audioSource1.PlayOneShot(nodeHitSound);
 
 			hp--;
+
+			display.SetLife(hp);
+			display.ShowHit();
+
 			if ( hp == 0 ) {
 				EndGame();
 				return;
@@ -302,12 +379,25 @@ public class Game : MonoBehaviour {
 		audioSource2.PlayDelayed(0.3f);
 
 		EndAttacker(attacker);
+
+		StartInvincible();
+		Invoke("StopInvincible", invincibleLengthOnKill);
+
+		score++;
+
+		display.SetScore(score);
+		display.ShowKill();
 	}
 
 	void OnAttackerTimeout(Attacker attacker) {
 		audioSource1.PlayOneShot(attackerTimeoutSound);
 
+		StartInvincible();
+		Invoke("StopInvincible", invincibleLengthOnKill);
+
 		EndAttacker(attacker);
+
+		display.ShowTimeout();
 	}
 
 	void EndAttacker(Attacker attacker) {
@@ -316,39 +406,17 @@ public class Game : MonoBehaviour {
 		foreach ( Target t in targets ) {
 			t.SignalDidDamage();
 		}
-		StartInvincible();
-		Invoke("StopInvincible", invincibleLengthOnKill);
 
-		music.SetAttackers(--activeAttackerCount);
-
-		bool allDead = true;
-		foreach ( Attacker a in attackers ) {
-			if ( a.IsAlive() ) {
-				allDead = false;
-			}
+		positionInWave++;
+		if ( isPractice ) {
+			Invoke("SendAttacker", 1f);
 		}
-
-		CancelInvoke("SendOverlappedAttacker");
-		bool sendOverlap = false;
-
-		if ( allDead ) {
-			if ( timeBetweenAttacks < 0 ) { // check this first, so a 0-count timeBetweenAttacks gets to execute before overlap begins
-				timeBetweenAttacks = 0;
-				sendOverlap = true;
-			}
-			Invoke("SendAttacker", timeBetweenAttacks);
-			timeBetweenAttacks -= reduceTimeBeweenAttacks;
+		else if ( positionInWave < attackerCount ) {
+			float time = UnityEngine.Random.Range(minTimeBetweenAttacks, maxTimeBetweenAttacks);
+			Invoke("SendAttacker", time);
 		}
 		else {
-			sendOverlap = true; // there's a still an attacker in there who was overlapping, so queue another overlap
-		}
-
-		if ( sendOverlap ) {
-			Invoke("SendOverlappedAttacker", timeForOverlappedAttacks);
-			timeForOverlappedAttacks -= reduceTimeForOverlappedAttacks;
-			if ( timeForOverlappedAttacks < 0 ) {
-				timeForOverlappedAttacks = 0;
-			} 
+			Invoke("EndWave", 1f);
 		}
 	}
 
@@ -363,31 +431,6 @@ public class Game : MonoBehaviour {
 			t.StopSignal();
 		}
 	}
-
-
-//	IEnumerator WaitAndPlayAnnouncerEnding(float seconds) {
-//		yield return new WaitForSeconds(seconds);
-//		announcer.PlayEnding(scores[1] > scores[2] ? TeamName1 : TeamName2);
-//	}
-	
-
-//	IEnumerator WaitAndTimeoutPass(float seconds) {
-//		yield return new WaitForSeconds(seconds);
-//		passTimeoutRoutine = null;
-//
-//		foreach ( Player p in players ) {
-//			p.PassBallOff();
-//		}
-//
-//		playerCycle = GetRandomizedPlayers();
-//		playerCycle.Remove(lastHoldingPlayer);
-//		
-//		playerCycleIdx = 0;
-//		playerCycleCount = 0;
-//		CycleBall(false);
-//	}
-
-
 
 }
 

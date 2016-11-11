@@ -10,9 +10,9 @@ public class MusicManager : MonoBehaviour {
 	[Range(0,1)]
 	public float fadeSpeed;
 
-	public AudioSource noAttackers;
-	public AudioSource oneAttacker;
-	public AudioSource multipleAttackers;
+	private float _volume;
+
+	public AudioSource[] waveTracks;
 
 	protected AudioSource currentSource;
 	protected AudioSource lastSource;
@@ -20,42 +20,45 @@ public class MusicManager : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		noAttackers.loop = true;
-		oneAttacker.loop = true;
-		multipleAttackers.loop = true;
+		foreach ( AudioSource src in waveTracks ) {
+			src.loop = true;
+		}
 	}
 
 	public void Reset() {
-		noAttackers.Stop();
-		oneAttacker.Stop();
-		multipleAttackers.Stop();
+		foreach ( AudioSource src in waveTracks ) {
+			src.Stop();
+		}
 		currentSource = null;
 		lastSource = null;
 	}
 
 	public void StartGame() {
-		noAttackers.volume = 0;
-		noAttackers.Play();
-
-		oneAttacker.volume = 0;
-		oneAttacker.Play();
-
-		multipleAttackers.volume = 0;
-		multipleAttackers.Play();
+		foreach ( AudioSource src in waveTracks ) {
+			src.volume = 0;
+			src.Play();
+		}
 	}
 
-	public void SetAttackers(int attackers) {
+	public IEnumerator SetWave(int wave, float delay) {
+		yield return new WaitForSeconds(delay);
+
 		lastSource = currentSource;
 
-		if ( attackers == 0 ) {
-			currentSource = noAttackers;
+		if ( wave > waveTracks.Length ) {
+			wave = waveTracks.Length;
 		}
-		else if ( attackers == 1 ) {
-			currentSource = oneAttacker;
-		}
-		else {
-			currentSource = multipleAttackers;
-		}
+
+		currentSource = waveTracks[wave-1];
+
+		_volume = volume;
+	}
+
+	public IEnumerator SetBreak(float delay) {
+		yield return new WaitForSeconds(delay);
+
+		_volume = volume * 0.3f;;
+		currentSource.volume = _volume;
 	}
 
 	void Update() {
@@ -67,10 +70,10 @@ public class MusicManager : MonoBehaviour {
 			}
 		}
 
-		if ( currentSource != null && currentSource.volume < volume ) {
+		if ( currentSource != null && currentSource.volume < _volume ) {
 			currentSource.volume += Time.deltaTime * fadeSpeed;
-			if ( currentSource.volume > volume ) {
-				currentSource.volume = volume;
+			if ( currentSource.volume > _volume ) {
+				currentSource.volume = _volume;
 			}
 		} 
 	}

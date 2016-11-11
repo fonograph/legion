@@ -1,0 +1,21 @@
+fileFormatVersion: 2
+guid: fe0920d7ce9814b29be1637dbda43fb4
+timeCreated: 1477967247
+licenseType: Pro
+TrueTypeFontImporter:
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: DINk
+  fontNames:
+  - DINk
+  fallbackFontReferences: []
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
