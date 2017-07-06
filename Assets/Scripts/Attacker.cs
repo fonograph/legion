@@ -31,7 +31,9 @@ public class Attacker : MonoBehaviour {
 
 		node.SetLED(Color.green);
 
-		Invoke("Timeout", Game.Instance.countdownTime);
+		if ( Game.Instance.countdownEnabled ) { 
+			Invoke("Timeout", Game.Instance.countdownTime);
+		}
 	}
 
 	public void Reset() {
@@ -60,6 +62,10 @@ public class Attacker : MonoBehaviour {
 
 	public bool IsAlive() {
 		return alive;
+	}
+
+	public bool IsActive() {
+		return node.active;
 	}
 		
 }

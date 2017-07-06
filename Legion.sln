@@ -1,11 +1,11 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2008
-
-Project("{021C436D-31E9-EEE1-E6AE-64AF3058B956}") = "Legion", "Assembly-CSharp-firstpass.csproj", "{7EB50A33-0548-EA43-078B-95AC5B07AAEC}"
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Legion", "Assembly-CSharp-firstpass.csproj", "{7EB50A33-0548-EA43-078B-95AC5B07AAEC}"
 EndProject
-Project("{021C436D-31E9-EEE1-E6AE-64AF3058B956}") = "Legion", "Assembly-CSharp.csproj", "{64BC8C3F-FC1A-37D4-1EBB-F6161866D1EC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Legion", "Assembly-CSharp.csproj", "{64BC8C3F-FC1A-37D4-1EBB-F6161866D1EC}"
 EndProject
-Project("{021C436D-31E9-EEE1-E6AE-64AF3058B956}") = "Legion", "Assembly-CSharp-Editor.csproj", "{71D6EF56-9CF1-B563-7745-1E6F6F5A587F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Legion", "Assembly-CSharp-Editor.csproj", "{71D6EF56-9CF1-B563-7745-1E6F6F5A587F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

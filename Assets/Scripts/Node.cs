@@ -4,13 +4,12 @@ using System.Collections;
 
 public class Node : MonoBehaviour {
 
-	public static Color LIVECOLOR = Color.green;
-	public static Color DEADCOLOR = Color.red;
 
 	public UniMoveController controller;
 //	private Vector3 lastAccel = Vector3.zero;
 
 	public int type;
+	public bool active; // inactive means fully disabled, i.e. not participating in game
 
 	public bool inGame;
 
@@ -73,6 +72,8 @@ public class Node : MonoBehaviour {
 		mzMinDriftTicks = 0;
 		mzMaxDriftTicks = 0;
 
+		active = true;
+
 		LoadCalibration();
 		ResetLEDAndRumble();
 
@@ -87,16 +88,23 @@ public class Node : MonoBehaviour {
 			return;
 		}
 
+		// to switch node type, press 2 buttons while holding trigger
+		// to turn an attacker on/off, press 2 buttons without trigger
+
 		if ( (controller.GetButton(PSMoveButton.Square) && controller.GetButton(PSMoveButton.Circle) && controller.GetButton(PSMoveButton.Cross) && controller.GetButton(PSMoveButton.Square)) && 
 			(controller.GetButtonDown(PSMoveButton.Square) || controller.GetButtonDown(PSMoveButton.Circle) || controller.GetButtonDown(PSMoveButton.Cross) || controller.GetButtonDown(PSMoveButton.Square))
 		) {
-			if ( type == 1 ) {
-				type = 2;
-				PlayerPrefs.SetInt(controller.Serial + "Type", 2);
-			}
-			else {
-				type = 1;
-				PlayerPrefs.SetInt(controller.Serial + "Type", 1);
+			if ( controller.Trigger > 0.5f ) {
+				if ( type == 1 ) {
+					type = 2;
+					PlayerPrefs.SetInt(controller.Serial + "Type", 2);
+				}
+				else {
+					type = 1;
+					PlayerPrefs.SetInt(controller.Serial + "Type", 1);
+				}
+			} else {
+				active = !active;
 			}
 			ResetLEDAndRumble();
 		}
@@ -141,7 +149,7 @@ public class Node : MonoBehaviour {
 //		Debug.Log (mx.ToString() + " " + my.ToString() + " " + mz.ToString());
 
 		if ( inGame ) {
-			float d = Game.Instance.magnetThreshold;
+			float d = type == 1 ? Game.Instance.magnetThresholdTarget : Game.Instance.magnetThresholdAttacker;
 			if ( (mx!=0 || my!=0 || mz!=0 ) && ( mx < mxMin-d || mx > mxMax+d || my < myMin-d || my > myMax+d || mz < mzMin-d || mz > mzMax+d ) ) {
 //					alive = false;
 //					SetLED(DEADCOLOR);
@@ -292,7 +300,15 @@ public class Node : MonoBehaviour {
 	}
 
 	public void ResetLEDAndRumble() {
-		SetLED(type==1 ? Color.yellow : Color.blue);
+		if ( type == 1 ) {
+			SetLED(Color.yellow);
+		} else {
+			if ( active ) {
+				SetLED(Color.blue);
+			} else {
+				SetLED(Color.black);
+			}
+		}
 		SetRumble(0);
 	}
 

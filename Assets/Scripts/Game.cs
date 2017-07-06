@@ -7,12 +7,15 @@ using System.Collections.Generic;
 
 public class Game : MonoBehaviour {
 
-	public enum Phase { Connecting, Waiting, Playing, Ended, Calibrating };
+	public enum Phase { Connecting, Waiting, Playing, Ended };
 
 	public Node nodePrefab;
 
-	[Range(0, 300)]
-	public float magnetThreshold;
+	[HideInInspector]
+	public float magnetThresholdAttacker;
+
+	[HideInInspector]
+	public float magnetThresholdTarget;
 
 	[Range(0, 3)]
 	public float invincibleLengthOnKill;
@@ -47,11 +50,11 @@ public class Game : MonoBehaviour {
 	[Range(1, 10)]
 	public int countdownTime;
 
+	[HideInInspector]
+	public bool countdownEnabled;
+
 
 	public static Game Instance;
-
-	private AudioSource audioSource1;
-	private AudioSource audioSource2;
 
 	private MusicManager music;
 	private Display display;
@@ -74,10 +77,24 @@ public class Game : MonoBehaviour {
 	private int hp;
 	private int score;
 
+	public GameObject setupPanel;
+	public Toggle timeoutToggle;
+	public InputField targetSensitivityText;
+	public InputField attackerSensitivityText;
+
+	public AudioSource nodeHitAudioSource;
+	public AudioSource healAudioSource;
+	public AudioSource healthAudioSource;
+	public AudioSource attackerSlashAudioSource;
+	public AudioSource attackerScreamAudioSource;
+	public AudioSource waveEventAudioSource;
+	public AudioSource gameEventAudioSource;
+
 	public AudioClip nodeHitSound;
 	public AudioClip healSound;
+	public AudioClip healthSound;
 	public List<AudioClip> attackerKilledSounds;
-	public AudioClip attackerKilledScream;
+	public List<AudioClip> attackerKilledScream;
 	public AudioClip attackerTimeoutSound;
 	public AudioClip waveStartSound;
 	public AudioClip waveEndSound;
@@ -89,8 +106,6 @@ public class Game : MonoBehaviour {
 	void Awake() {
 		Instance = this;
 		AudioSource[] audioSources = gameObject.GetComponents<AudioSource>();
-		audioSource1 = audioSources[0];
-		audioSource2 = audioSources[1];
 		music = GameObject.FindObjectOfType<MusicManager>();
 		display = GameObject.FindObjectOfType<Display>();
 	}
@@ -99,6 +114,8 @@ public class Game : MonoBehaviour {
 		nodes = new List<Node>();
 		attackers = new List<Attacker>();
 		targets = new List<Target>();
+
+		InitSetup();
 
 		int count = UniMoveController.GetNumConnected();
 		Debug.Log("Controllers connected: " + count);
@@ -135,7 +152,7 @@ public class Game : MonoBehaviour {
 						else {
 							Attacker attacker = nodes[i].gameObject.AddComponent<Attacker>();
 							attacker.HitEvent += OnAttackerHit;
-							attacker.TimeoutEvent += OnAttackerTimeout;
+							attacker.TimeoutEvent += OnAttackerHit;
 							attackers.Add(attacker);
 						}
 
@@ -156,12 +173,6 @@ public class Game : MonoBehaviour {
 				bool practice = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 				StartGame(practice);
 			}
-			if ( Input.GetKeyDown(KeyCode.C) ) {
-				phase = Phase.Calibrating;
-				foreach ( Node node in nodes ) {
-					node.SetCalibrationAllowed(true);
-				}
-			}
 		}
 
 		else if ( phase == Phase.Playing ) {
@@ -178,19 +189,30 @@ public class Game : MonoBehaviour {
 			}
 		}
 
-		else if ( phase == Phase.Calibrating ) {
-			if ( Input.GetKeyDown(KeyCode.C) ) {
-				phase = Phase.Waiting;
-				foreach ( Node node in nodes ) {
-					node.SetCalibrationAllowed(false);
-				}
-			}
-		}
-
 		if ( Input.GetKeyDown(KeyCode.D) ) {
 			ControllerDebug.Active = !ControllerDebug.Active;
 //			debugContainer.SetActive(!debugContainer.activeSelf);
 		}
+	}
+
+	void InitSetup() {
+		countdownEnabled = PlayerPrefs.GetInt("countdownEnabled")==1;
+		magnetThresholdTarget = PlayerPrefs.GetInt("magnetThresholdTarget");
+		magnetThresholdAttacker = PlayerPrefs.GetInt("magnetThresholdAttacker");
+
+		timeoutToggle.isOn = countdownEnabled;
+		targetSensitivityText.text = magnetThresholdTarget.ToString();
+		attackerSensitivityText.text = magnetThresholdAttacker.ToString();
+	}
+
+	public void UpdateSetup() {
+		countdownEnabled = timeoutToggle.isOn;
+		magnetThresholdTarget = int.Parse(targetSensitivityText.text);
+		magnetThresholdAttacker = int.Parse(attackerSensitivityText.text);
+
+		PlayerPrefs.SetInt("countdownEnabled", countdownEnabled?1:0);
+		PlayerPrefs.SetInt("magnetThresholdTarget", (int)magnetThresholdTarget);
+		PlayerPrefs.SetInt("magnetThresholdAttacker", (int)magnetThresholdAttacker);
 	}
 
 	void StartGame(bool practice) {
@@ -216,24 +238,32 @@ public class Game : MonoBehaviour {
 			attacker.Reset();
 		}
 
+		// only put active attackers in the schedule of attackers
+		List<Attacker> activeAttackers = new List<Attacker>();
+		foreach ( Attacker attacker in attackers ) {
+			if ( attacker.IsActive() ) {
+				activeAttackers.Add(attacker);
+			}
+		}
+
 		// create a schedule of attackers. just keep shuffling the list and putting the results on top -- this ensures randomization with an equal distribution
 		attackerSchedule = new Stack<Attacker>();
 		for ( int i=0; i<999; i++ ) {
-			attackers.Shuffle();
+			activeAttackers.Shuffle();
 
 			// make sure 2 in a row doesn't happen
-			while ( attackerSchedule.Count > 1 && attackerSchedule.Peek() == attackers[0] ) {
-				attackers.Shuffle();
+			while ( attackerSchedule.Count > 1 && activeAttackers.Count > 1 && attackerSchedule.Peek() == activeAttackers[0] ) {
+				activeAttackers.Shuffle();
 			}
 
-			foreach ( Attacker a in attackers ) {
+			foreach ( Attacker a in activeAttackers ) {
 				attackerSchedule.Push(a);
 			}
 		}
 
 		Invoke("StartNextWave", 3f);
 
-		audioSource1.PlayOneShot(gameStartSound);
+		gameEventAudioSource.PlayOneShot(gameStartSound);
 		display.ShowStart();
 		display.SetLife(hp);
 		display.SetScore(0);
@@ -241,6 +271,8 @@ public class Game : MonoBehaviour {
 		if ( !isPractice ) {
 			music.StartGame();
 		}
+
+		setupPanel.SetActive(false);
 	}
 
 	void KillProcesses() {
@@ -270,13 +302,14 @@ public class Game : MonoBehaviour {
 
 		music.Reset();
 		display.Reset(0, hpCount);
+		setupPanel.SetActive(true);
 	}
 
 	void EndGame() {
 		phase = Phase.Ended;
 
-		audioSource2.clip = gameOverSound;
-		audioSource2.PlayDelayed(1f);
+		gameEventAudioSource.clip = gameOverSound;
+		gameEventAudioSource.PlayDelayed(1f);
 
 		foreach ( Target target in targets ) {
 			target.SignalDead();
@@ -289,6 +322,7 @@ public class Game : MonoBehaviour {
 
 		music.Reset();
 		display.ShowGameOver();
+		setupPanel.SetActive(true);
 	}
 
 	void StartNextWave() {
@@ -297,8 +331,8 @@ public class Game : MonoBehaviour {
 
 		Invoke("SendAttacker", 2f);
 
-		audioSource2.clip = waveStartSound;
-		audioSource2.PlayDelayed(1f);
+		waveEventAudioSource.clip = waveStartSound;
+		waveEventAudioSource.PlayDelayed(1f);
 		display.ShowWaveStart(wave);
 
 		if ( !isPractice ) {
@@ -323,8 +357,8 @@ public class Game : MonoBehaviour {
 			maxTimeBetweenAttacks = 0;
 		}
 
-		audioSource2.clip = waveStartSound;
-		audioSource2.PlayDelayed(1f);
+		waveEventAudioSource.clip = waveEndSound;
+		waveEventAudioSource.PlayDelayed(1f);
 		display.ShowWaveEnd(wave);
 
 		if ( !isPractice ) {
@@ -336,8 +370,9 @@ public class Game : MonoBehaviour {
 		if ( hp < hpCount ) {
 			hp++;
 			display.SetLife(hp);
-			audioSource1.PlayOneShot(healSound);
+			healAudioSource.PlayOneShot(healSound);
 		}
+		Invoke("PlayHealthAudio", 1.5f);
 	}
 
 	void SendAttacker() {
@@ -346,7 +381,7 @@ public class Game : MonoBehaviour {
 
 	void OnTargetHit(Target target) {
 		if ( !invincible ) {
-			audioSource1.PlayOneShot(nodeHitSound);
+			nodeHitAudioSource.PlayOneShot(nodeHitSound);
 
 			hp--;
 
@@ -374,9 +409,9 @@ public class Game : MonoBehaviour {
 	}
 
 	void OnAttackerHit(Attacker attacker) {
-		audioSource1.PlayOneShot(attackerKilledSounds[UnityEngine.Random.Range(0, attackerKilledSounds.Count-1)]);
-		audioSource2.clip = attackerKilledScream;
-		audioSource2.PlayDelayed(0.3f);
+		attackerSlashAudioSource.PlayOneShot(attackerKilledSounds[UnityEngine.Random.Range(0, attackerKilledSounds.Count-1)]);
+		attackerScreamAudioSource.clip = attackerKilledScream[UnityEngine.Random.Range(0, attackerKilledScream.Count-1)];
+		attackerScreamAudioSource.PlayDelayed(0.3f);
 
 		EndAttacker(attacker);
 
@@ -390,7 +425,7 @@ public class Game : MonoBehaviour {
 	}
 
 	void OnAttackerTimeout(Attacker attacker) {
-		audioSource1.PlayOneShot(attackerTimeoutSound);
+		attackerSlashAudioSource.PlayOneShot(attackerTimeoutSound);
 
 		StartInvincible();
 		Invoke("StopInvincible", invincibleLengthOnKill);
@@ -429,6 +464,18 @@ public class Game : MonoBehaviour {
 		invincible = false;
 		foreach ( Target t in targets ) {
 			t.StopSignal();
+		}
+	}
+
+	void PlayHealthAudio() {
+		StartCoroutine(_PlayHealthAudio());
+	}
+
+	IEnumerator _PlayHealthAudio() {
+		for ( int i=0; i<hp; i++ ) {
+			healAudioSource.pitch = i*1;
+			healthAudioSource.PlayOneShot(healthSound);	
+			yield return new WaitForSeconds(0.3f);
 		}
 	}
 

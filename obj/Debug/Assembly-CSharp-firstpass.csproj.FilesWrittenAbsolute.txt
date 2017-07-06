@@ -44,3 +44,5 @@
 /Projects/Legion/Temp/bin/Debug/Unity.CecilTools.dll
 /Projects/Legion/Temp/bin/Debug/Mono.Cecil.Pdb.dll
 /Projects/Legion/Temp/bin/Debug/Mono.Cecil.Mdb.dll
+/Projects/Legion/Temp/bin/Debug/UnityEngine.TestRunner.dll
+/Projects/Legion/Temp/bin/Debug/nunit.framework.dll
