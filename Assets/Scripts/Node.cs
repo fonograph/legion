@@ -88,8 +88,8 @@ public class Node : MonoBehaviour {
 			return;
 		}
 
-		// to switch node type, press 2 buttons while holding trigger
-		// to turn an attacker on/off, press 2 buttons without trigger
+		// to switch node type, press all buttons while holding trigger
+		// to turn an attacker on/off, press all buttons without trigger
 
 		if ( (controller.GetButton(PSMoveButton.Square) && controller.GetButton(PSMoveButton.Circle) && controller.GetButton(PSMoveButton.Cross) && controller.GetButton(PSMoveButton.Square)) && 
 			(controller.GetButtonDown(PSMoveButton.Square) || controller.GetButtonDown(PSMoveButton.Circle) || controller.GetButtonDown(PSMoveButton.Cross) || controller.GetButtonDown(PSMoveButton.Square))

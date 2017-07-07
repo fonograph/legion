@@ -53,6 +53,9 @@ public class Game : MonoBehaviour {
 	[HideInInspector]
 	public bool countdownEnabled;
 
+	[HideInInspector]
+	public bool isPractice;
+
 
 	public static Game Instance;
 
@@ -66,8 +69,9 @@ public class Game : MonoBehaviour {
 
 	private Stack<Attacker> attackerSchedule;
 
+	private bool setupInited;
+
 	private Phase phase;
-	private bool isPractice;
 	private int wave;
 	private int positionInWave;
 	private float minTimeBetweenAttacks;
@@ -105,7 +109,6 @@ public class Game : MonoBehaviour {
 
 	void Awake() {
 		Instance = this;
-		AudioSource[] audioSources = gameObject.GetComponents<AudioSource>();
 		music = GameObject.FindObjectOfType<MusicManager>();
 		display = GameObject.FindObjectOfType<Display>();
 	}
@@ -116,6 +119,7 @@ public class Game : MonoBehaviour {
 		targets = new List<Target>();
 
 		InitSetup();
+		setupInited = true;
 
 		int count = UniMoveController.GetNumConnected();
 		Debug.Log("Controllers connected: " + count);
@@ -200,19 +204,29 @@ public class Game : MonoBehaviour {
 		magnetThresholdTarget = PlayerPrefs.GetInt("magnetThresholdTarget");
 		magnetThresholdAttacker = PlayerPrefs.GetInt("magnetThresholdAttacker");
 
+		Debug.Log(countdownEnabled);
+
 		timeoutToggle.isOn = countdownEnabled;
 		targetSensitivityText.text = magnetThresholdTarget.ToString();
 		attackerSensitivityText.text = magnetThresholdAttacker.ToString();
 	}
 
 	public void UpdateSetup() {
+		if ( !setupInited ) {
+			return;
+		}
+
 		countdownEnabled = timeoutToggle.isOn;
 		magnetThresholdTarget = int.Parse(targetSensitivityText.text);
 		magnetThresholdAttacker = int.Parse(attackerSensitivityText.text);
 
+
+		Debug.Log(countdownEnabled);
+
 		PlayerPrefs.SetInt("countdownEnabled", countdownEnabled?1:0);
 		PlayerPrefs.SetInt("magnetThresholdTarget", (int)magnetThresholdTarget);
 		PlayerPrefs.SetInt("magnetThresholdAttacker", (int)magnetThresholdAttacker);
+		PlayerPrefs.Save();
 	}
 
 	void StartGame(bool practice) {
@@ -267,6 +281,7 @@ public class Game : MonoBehaviour {
 		display.ShowStart();
 		display.SetLife(hp);
 		display.SetScore(0);
+		display.SetPractice(isPractice);
 
 		if ( !isPractice ) {
 			music.StartGame();
@@ -341,7 +356,7 @@ public class Game : MonoBehaviour {
 	}
 
 	void EndWave() {
-		Invoke("Heal", 3f);
+		Invoke("Heal", 2f);
 		Invoke("StartNextWave", (float)breakTime);
 
 		// increase difficulty
@@ -372,7 +387,7 @@ public class Game : MonoBehaviour {
 			display.SetLife(hp);
 			healAudioSource.PlayOneShot(healSound);
 		}
-		Invoke("PlayHealthAudio", 1.5f);
+		Invoke("PlayHealthAudio", 0.8f);
 	}
 
 	void SendAttacker() {
@@ -383,7 +398,9 @@ public class Game : MonoBehaviour {
 		if ( !invincible ) {
 			nodeHitAudioSource.PlayOneShot(nodeHitSound);
 
-			hp--;
+			if ( !isPractice ) {
+				hp--;
+			}
 
 			display.SetLife(hp);
 			display.ShowHit();
@@ -473,9 +490,9 @@ public class Game : MonoBehaviour {
 
 	IEnumerator _PlayHealthAudio() {
 		for ( int i=0; i<hp; i++ ) {
-			healAudioSource.pitch = i*1;
+			healthAudioSource.pitch = 1 + i*0.05f;
 			healthAudioSource.PlayOneShot(healthSound);	
-			yield return new WaitForSeconds(0.3f);
+			yield return new WaitForSeconds(0.2f);
 		}
 	}
 

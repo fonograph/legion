@@ -31,7 +31,7 @@ public class Attacker : MonoBehaviour {
 
 		node.SetLED(Color.green);
 
-		if ( Game.Instance.countdownEnabled ) { 
+		if ( Game.Instance.countdownEnabled && !Game.Instance.isPractice ) { 
 			Invoke("Timeout", Game.Instance.countdownTime);
 		}
 	}

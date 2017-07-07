@@ -14,11 +14,13 @@ public class Display : MonoBehaviour {
 	public Text mainText;
 	private Animator mainTextAnimator;
 	public Image flashImage;
+	public GameObject practiceText;
 
 	public void Reset(int score, int life) {
 		SetScore(score);
 		SetLife(life);
 		mainTextAnimator.SetTrigger("Hide");
+		SetPractice(false);
 	}
 
 	public void SetScore(int score) {
@@ -61,6 +63,10 @@ public class Display : MonoBehaviour {
 
 	public void ShowTimeout() {
 		Flash(Color.blue);
+	}
+
+	public void SetPractice(bool toggle) {
+		practiceText.SetActive(toggle);
 	}
 
 	void Flash(Color color) {
