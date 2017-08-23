@@ -184,6 +184,11 @@ public class Game : MonoBehaviour {
 			if ( Input.GetKeyDown(KeyCode.Space) ) {
 				StopGame();
 			}
+
+			// heal
+			if ( Input.GetKeyDown(KeyCode.H) ) {
+				Heal();
+			}
 		}
 
 		else if ( phase == Phase.Ended ) {
