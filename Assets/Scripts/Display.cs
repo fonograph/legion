@@ -11,6 +11,7 @@ public class Display : MonoBehaviour {
 
 	public Text scoreText;
 	public Image[] lifeImages;
+	public Text lifeText;
 	public Text mainText;
 	private Animator mainTextAnimator;
 	public Image flashImage;
@@ -28,9 +29,10 @@ public class Display : MonoBehaviour {
 	}
 
 	public void SetLife(int life) {
-		for ( int i=0; i<lifeImages.Length; i++ ) {
-			lifeImages[i].gameObject.SetActive(i < life);
-		}
+		lifeText.text = life.ToString();
+		// for ( int i=0; i<lifeImages.Length; i++ ) {
+		// 	lifeImages[i].gameObject.SetActive(i < life);
+		// }
 	}
 
 	public void ShowStart() {

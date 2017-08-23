@@ -23,7 +23,7 @@ public class Game : MonoBehaviour {
 	[Range(0, 5)]
 	public float invincibleLengthOnDamage;
 
-	[Range(1, 5)]
+	[HideInInspector]
 	public int hpCount;
 
 	[Range(0, 5)]
@@ -43,9 +43,6 @@ public class Game : MonoBehaviour {
 
 	[Range(1,5)]
 	public int increaseAttackerCount;
-
-	[Range(1,10)]
-	public int breakTime;
 
 	[Range(1, 10)]
 	public int countdownTime;
@@ -85,6 +82,7 @@ public class Game : MonoBehaviour {
 	public Toggle timeoutToggle;
 	public InputField targetSensitivityText;
 	public InputField attackerSensitivityText;
+	public InputField startingHealthText;
 
 	public AudioSource nodeHitAudioSource;
 	public AudioSource healAudioSource;
@@ -100,8 +98,6 @@ public class Game : MonoBehaviour {
 	public List<AudioClip> attackerKilledSounds;
 	public List<AudioClip> attackerKilledScream;
 	public AudioClip attackerTimeoutSound;
-	public AudioClip waveStartSound;
-	public AudioClip waveEndSound;
 	public AudioClip gameStartSound;
 	public AudioClip gameOverSound;
 
@@ -184,6 +180,11 @@ public class Game : MonoBehaviour {
 			if ( Input.GetKeyDown(KeyCode.Space) ) {
 				StopGame();
 			}
+
+			// heal
+			if ( Input.GetKeyDown(KeyCode.H) ) {
+				Heal();
+			}
 		}
 
 		else if ( phase == Phase.Ended ) {
@@ -203,12 +204,12 @@ public class Game : MonoBehaviour {
 		countdownEnabled = PlayerPrefs.GetInt("countdownEnabled")==1;
 		magnetThresholdTarget = PlayerPrefs.GetInt("magnetThresholdTarget");
 		magnetThresholdAttacker = PlayerPrefs.GetInt("magnetThresholdAttacker");
-
-		Debug.Log(countdownEnabled);
+		hpCount = 3;
 
 		timeoutToggle.isOn = countdownEnabled;
 		targetSensitivityText.text = magnetThresholdTarget.ToString();
 		attackerSensitivityText.text = magnetThresholdAttacker.ToString();
+		startingHealthText.text = hpCount.ToString();
 	}
 
 	public void UpdateSetup() {
@@ -219,9 +220,7 @@ public class Game : MonoBehaviour {
 		countdownEnabled = timeoutToggle.isOn;
 		magnetThresholdTarget = int.Parse(targetSensitivityText.text);
 		magnetThresholdAttacker = int.Parse(attackerSensitivityText.text);
-
-
-		Debug.Log(countdownEnabled);
+		hpCount = int.Parse(startingHealthText.text);
 
 		PlayerPrefs.SetInt("countdownEnabled", countdownEnabled?1:0);
 		PlayerPrefs.SetInt("magnetThresholdTarget", (int)magnetThresholdTarget);
@@ -346,19 +345,12 @@ public class Game : MonoBehaviour {
 
 		Invoke("SendAttacker", 2f);
 
-		waveEventAudioSource.clip = waveStartSound;
-		waveEventAudioSource.PlayDelayed(1f);
-		display.ShowWaveStart(wave);
-
 		if ( !isPractice ) {
 			StartCoroutine(music.SetWave(wave, 0.5f));
 		}
 	}
 
 	void EndWave() {
-		Invoke("Heal", 2f);
-		Invoke("StartNextWave", (float)breakTime);
-
 		// increase difficulty
 		attackerCount++;
 
@@ -372,13 +364,7 @@ public class Game : MonoBehaviour {
 			maxTimeBetweenAttacks = 0;
 		}
 
-		waveEventAudioSource.clip = waveEndSound;
-		waveEventAudioSource.PlayDelayed(1f);
-		display.ShowWaveEnd(wave);
-
-		if ( !isPractice ) {
-			StartCoroutine(music.SetBreak(0));
-		}
+		StartNextWave();
 	}
 
 	void Heal() {
