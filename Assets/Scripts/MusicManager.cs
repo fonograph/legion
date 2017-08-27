@@ -62,7 +62,7 @@ public class MusicManager : MonoBehaviour {
 	}
 
 	void Update() {
-		if ( lastSource != null ) {
+		if ( lastSource != null && lastSource != currentSource ) {
 			lastSource.volume -= Time.deltaTime * fadeSpeed;
 			if ( lastSource.volume <= 0 ) {
 				lastSource.volume = 0;
