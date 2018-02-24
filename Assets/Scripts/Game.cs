@@ -47,7 +47,7 @@ public class Game : MonoBehaviour {
 	[Range(1,10)]
 	public int breakTime;
 
-	[Range(1, 10)]
+	[Range(1, 30)]
 	public int countdownTime;
 
 	[HideInInspector]
@@ -424,7 +424,7 @@ public class Game : MonoBehaviour {
 			// end current attackers
 			foreach ( Attacker attacker in attackers ) {
 				if ( attacker.IsAlive() ) {
-					EndAttacker(attacker);
+					EndAttacker(attacker, false);
 				}
 			}
 		}
@@ -435,7 +435,7 @@ public class Game : MonoBehaviour {
 		attackerScreamAudioSource.clip = attackerKilledScream[UnityEngine.Random.Range(0, attackerKilledScream.Count-1)];
 		attackerScreamAudioSource.PlayDelayed(0.3f);
 
-		EndAttacker(attacker);
+		EndAttacker(attacker, true);
 
 		StartInvincible();
 		Invoke("StopInvincible", invincibleLengthOnKill);
@@ -452,16 +452,18 @@ public class Game : MonoBehaviour {
 		StartInvincible();
 		Invoke("StopInvincible", invincibleLengthOnKill);
 
-		EndAttacker(attacker);
+		EndAttacker(attacker, true);
 
 		display.ShowTimeout();
 	}
 
-	void EndAttacker(Attacker attacker) {
+	void EndAttacker(Attacker attacker, bool wasKilled) {
 		attacker.Kill();
 
-		foreach ( Target t in targets ) {
-			t.SignalDidDamage();
+		if ( wasKilled ) {
+			foreach ( Target t in targets ) {
+				t.SignalDidDamage();
+			}
 		}
 
 		positionInWave++;
