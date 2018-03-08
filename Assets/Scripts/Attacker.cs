@@ -6,6 +6,7 @@ public class Attacker : MonoBehaviour {
 
 	public event Action<Attacker> HitEvent;
 	public event Action<Attacker> TimeoutEvent;
+	public event Action<Attacker> TimeoutWarningEvent;
 
 	private Node node;
 
@@ -25,6 +26,7 @@ public class Attacker : MonoBehaviour {
 	public void Activate() {
 		alive = true;
 		CancelInvoke("Timeout");
+		CancelInvoke("TimeoutWarning");
 
 		node.SetRumble(1f);
 		node.SetRumble(0, 1f);
@@ -33,12 +35,14 @@ public class Attacker : MonoBehaviour {
 
 		if ( Game.Instance.countdownEnabled && !Game.Instance.isPractice ) { 
 			Invoke("Timeout", Game.Instance.countdownTime);
+			Invoke("TimeoutWarning", Game.Instance.countdownTime - 5);
 		}
 	}
 
 	public void Reset() {
 		alive = false;
 		CancelInvoke("Timeout");
+		CancelInvoke("TimeoutWarning");
 
 		node.SetLED(Color.black);
 	}
@@ -46,6 +50,7 @@ public class Attacker : MonoBehaviour {
 	public void Kill() {
 		alive = false;
 		CancelInvoke("Timeout");
+		CancelInvoke("TimeoutWarning");
 
 		node.SetRumble(1f);
 		node.SetRumble(0, 2f);
@@ -57,6 +62,12 @@ public class Attacker : MonoBehaviour {
 	private void Timeout() {
 		if ( alive ) {
 			TimeoutEvent(this);
+		}
+	}
+
+	private void TimeoutWarning() {
+		if ( alive ) {
+			TimeoutWarningEvent(this);
 		}
 	}
 

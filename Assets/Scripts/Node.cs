@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System;
 using System.Collections;
+using UnityEngine.UI;
 
 public class Node : MonoBehaviour {
 
@@ -49,14 +50,18 @@ public class Node : MonoBehaviour {
 
 	public event Action<Node> HitEvent;
 
+	private Button debugButton;
+
+
 	void Awake() {
 	}
 
 	void Start() {
 	}
 
-	public void Init(UniMoveController c) {
-		controller = c;
+	public void Init(UniMoveController controller, Button debugButton) {
+		this.controller = controller;
+		this.debugButton = debugButton;
 
 		canIBeCalibrating = true;
 		mxMax = -2048;
@@ -78,6 +83,14 @@ public class Node : MonoBehaviour {
 		ResetLEDAndRumble();
 
 		Invoke("CalibrateForever", 0);
+	}
+
+	public void InitDebug(int type, Button debugButton) {
+		this.debugButton = debugButton;
+		this.debugButton.onClick.AddListener(this.OnDebugButtonClick);
+		this.type = type;
+		this.active = true;
+		ResetLEDAndRumble();
 	}
 
 
@@ -208,6 +221,12 @@ public class Node : MonoBehaviour {
 //		}
 	}
 
+	private void OnDebugButtonClick() {
+		if ( inGame ) {
+			HitEvent(this);
+		}
+	}
+
 	public void AllowCalibration() {
 		canIBeCalibrating = true;
 	}
@@ -329,7 +348,10 @@ public class Node : MonoBehaviour {
 			StartCoroutine(setLEDRoutine);
 		}
 		else {
-			controller.SetLED(color);
+			if (controller != null) {
+				controller.SetLED(color);
+			}
+			debugButton.image.color = color;
 		}
 	}
 
@@ -352,8 +374,9 @@ public class Node : MonoBehaviour {
 			StartCoroutine(setRumbleRoutine);
 		}
 		else {
-//			rumble = 0;
-			controller.SetRumble(rumble);
+			if (controller != null) {
+				controller.SetRumble(rumble);
+			}
 		}
 	}
 	
@@ -362,18 +385,43 @@ public class Node : MonoBehaviour {
 		SetRumble(rumble); 
 	}
 
-	public void Flash(Color color1, Color color2) {
+	public void Flash(Color color) {
 		if ( setLEDRoutine != null) 
 			StopCoroutine(setLEDRoutine);
 
-		SetLED(color1);
-		setLEDRoutine = FlashCoroutine(color1, color2, 0.2f);
+		setLEDRoutine = FlashCoroutine(color);
 		StartCoroutine(setLEDRoutine);
 	}
 
-	private IEnumerator FlashCoroutine(Color color1, Color color2, float delay) {
-		yield return new WaitForSeconds(delay);
-		Flash(color2, color1);
+	private IEnumerator FlashCoroutine(Color color) {
+		float h;
+		float s;
+		float v;
+		Color.RGBToHSV(color, out h, out s, out v);
+		v = 1;
+		bool decreasing = true;
+		while (true) {
+			Color currentColor = Color.HSVToRGB(h, s, v);
+			if (controller != null) {
+				controller.SetLED(currentColor);
+			}
+			debugButton.image.color = currentColor;
+			
+			if (decreasing) {
+				v -= Time.deltaTime * 2;
+				if (v < 0 ) {
+					v = 0;
+					decreasing = false;
+				} 
+			} else {
+				v += Time.deltaTime * 2;
+				if (v > 1) {
+					v = 1;
+					decreasing = true;
+				}
+			}
+			yield return new WaitForEndOfFrame();
+		}
 	}
 
 	private void LoadCalibration() {
