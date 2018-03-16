@@ -55,8 +55,9 @@ public class Display : MonoBehaviour {
 
 	public void ShowGameOver() {
 		mainText.text = "GAME\nOVER";
-		mainTextAnimator.SetTrigger("ShowStay");
+		mainTextAnimator.SetTrigger("Show");
 		HideScore();
+		Invoke("ShowScore", 3f);
 	}
 
 	public void ShowHit() {

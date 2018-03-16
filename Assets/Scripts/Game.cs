@@ -468,7 +468,7 @@ public class Game : MonoBehaviour {
 		music.Reset();
 		display.ShowGameOver();
 
-		Invoke("StopGame", 5);
+		Invoke("StopGame", 10);
 	}
 
 	void StartNextWave() {
