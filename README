@@ -1,3 +1,11 @@
 To change the type of a controller, hold the trigger and press all 4 buttons. For the change to take effect, you will need to restart the game.
 
 To turn an attacker on and off, press all 4 buttons. You don't need to restart the game.
+
+S to turn on & off settings display.
+
+D to turn on & off controller debug view. (In this view you can click on the circles to simulate hits.)
+
+Shift+Space to start a practice game, Space again to stop it.
+
+Space to start a normal game, Space again to stop it early.
